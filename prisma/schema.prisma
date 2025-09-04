@@ -1,0 +1,332 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApprovalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum UserRole {
+  ADMIN
+  ORGANIZATION
+  PLAYER
+  CAPTAIN
+}
+
+enum AuthProvider {
+  EMAIL
+  PHONE
+  GOOGLE
+  FACEBOOK
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+enum MembershipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+enum Relation {
+  FATHER
+  MOTHER
+  OTHER
+}
+enum ParticipantType {
+  TEAM
+  PLAYER
+}
+
+enum games {
+  FOOTBALL
+  BASLETBALL
+  HANDBALL
+  PLAYSTATION
+}
+
+enum elimination {
+  SINGLE_ELIMINATION
+  DOUBLE_ELIMINATION
+  KNOCKOUT
+}
+model User {
+  user_id      BigInt   @id @default(autoincrement())
+  name         String
+  email        String  @unique
+  phone_number String  @unique
+  gender       Gender
+  birth_date   DateTime @db.Date
+  provider     AuthProvider @default(EMAIL)
+  password_hash String?
+  role         UserRole   @default(PLAYER)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  player_profile     PlayerProfile?
+  captain_profile    CaptainProfile?
+  organization_profile OrganizationProfile?
+  admin_profile      AdminProfile?
+  oauth_accounts     OauthAccount[]
+  refresh_tokens     RefreshToken[]
+  teams              Team[] @relation("CreatedTeams")
+  payments           Payment[]
+}
+
+model OauthAccount {
+  oauth_id        BigInt   @id @default(autoincrement())
+  user            User     @relation(fields: [user_id], references: [user_id])
+  user_id         BigInt
+  provider        AuthProvider
+  provider_user_id String
+  access_token    String?
+  refresh_token   String?
+  expires_at      DateTime?
+  created_at      DateTime @default(now())
+}
+
+model RefreshToken {
+  token_id   BigInt   @id @default(autoincrement())
+  user       User     @relation(fields: [user_id], references: [user_id])
+  user_id    BigInt
+  token      String
+  user_agent String?
+  ip_address String?
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now())
+}
+
+model AdminProfile {
+  user       User   @relation(fields: [user_id], references: [user_id])
+  user_id    BigInt @id
+  created_at DateTime @default(now())
+}
+
+model OrganizationProfile {
+  user            User   @relation(fields: [user_id], references: [user_id])
+  user_id         BigInt @id
+  owner_name      String 
+  approval_status ApprovalStatus @default(PENDING)
+  approved_by     BigInt
+  created_at      DateTime @default(now())
+  competitions Competition[]
+}
+
+model Guardian {
+  guardian_id BigInt @id @default(autoincrement())
+  name        String
+  email       String @unique
+  phone_number String @unique
+  relation    Relation @default(FATHER)
+  created_at  DateTime @default(now())
+  players PlayerProfile[]
+}
+
+model PlayerProfile {
+  user         User     @relation(fields: [user_id], references: [user_id])
+  user_id      BigInt   @id
+  preferred_games games[]
+  city          String
+  guardian_id   BigInt?
+  guardian      Guardian? @relation(fields: [guardian_id], references: [guardian_id]) 
+  created_at    DateTime @default(now())
+  bookings BookingService[] 
+  team_memberships TeamMember[]  
+}
+
+model CaptainProfile {
+  user       User   @relation(fields: [user_id], references: [user_id])
+  user_id    BigInt @id
+  bio        String?
+  experience String?
+  created_at DateTime @default(now())
+  services CaptainService[]
+}
+
+model CaptainService {
+  service_id  BigInt @id @default(autoincrement())
+  captain     CaptainProfile @relation(fields: [captain_id], references: [user_id])
+  captain_id  BigInt
+  title       String
+  description String?
+  price       Float? @default(0)
+  duration    Int?
+  created_at  DateTime @default(now())
+  bookings BookingService[]
+}
+
+model BookingService {
+  booking_id  BigInt @id @default(autoincrement())
+  player      PlayerProfile @relation(fields: [player_id], references: [user_id])
+  player_id   BigInt
+  service     CaptainService @relation(fields: [service_id], references: [service_id])
+  service_id  BigInt
+  status      BookingStatus @default(REQUESTED)
+  price       Float? @default(0)
+  booked_at   DateTime @default(now())
+  scheduled_at DateTime?
+  notes       String?
+  payments Payment[]
+}
+
+model Team {
+  team_id    BigInt @id @default(autoincrement())
+  name       String
+  logo       String?
+  created_by User? @relation("CreatedTeams", fields: [created_by_id], references: [user_id])
+  created_by_id BigInt?
+  created_at DateTime @default(now())
+  members TeamMember[]
+}
+
+model TeamMember {
+  team_id   BigInt
+  player_id BigInt
+  role_in_team String?
+  status    MembershipStatus @default(PENDING)
+  invited_at DateTime @default(now())
+  responded_at DateTime?
+  team   Team @relation(fields: [team_id], references: [team_id])
+  player PlayerProfile @relation(fields: [player_id], references: [user_id])
+  @@id([team_id, player_id])
+}
+
+model CompetitionType {
+  type_id   BigInt @id @default(autoincrement())
+  name      String
+  rules     String
+  sport     String
+  elimination_format elimination @default(SINGLE_ELIMINATION)
+  created_by_admin BigInt?
+  competitions Competition[]
+  created_at DateTime @default(now())
+}
+
+model Competition {
+  competition_id BigInt @id @default(autoincrement())
+  name      String
+  type      CompetitionType @relation(fields: [type_id], references: [type_id])
+  type_id   BigInt
+  start_date DateTime
+  end_date   DateTime
+  venue_name String
+  venue_address String
+  venue_city String
+  organization   OrganizationProfile @relation(fields: [organization_id], references: [user_id])
+  organization_id BigInt
+  approval_status ApprovalStatus @default(PENDING)
+  price      Float @default(0)
+  created_at DateTime @default(now())
+  matches Match[]
+  participants Participant[]
+  groups CompetitionGroup[]
+}
+
+model Participant {
+  participant_id BigInt @id @default(autoincrement())
+  competition    Competition @relation(fields: [competition_id], references: [competition_id])
+  competition_id BigInt
+  type           ParticipantType
+  team_id        BigInt?
+  player_id      BigInt?
+  registration_date DateTime @default(now())
+  qr_code        String?
+  payment_required Float?
+  group_memberships GroupMembership[] 
+  match_as_participant1 Match[] @relation("MatchParticipant1") 
+  match_as_participant2 Match[] @relation("MatchParticipant2") 
+  @@unique([competition_id, team_id])
+  @@unique([competition_id, player_id])
+
+  payments Payment[]
+}
+
+model CompetitionGroup {
+  group_id BigInt @id @default(autoincrement())
+  competition Competition @relation(fields: [competition_id], references: [competition_id])
+  competition_id BigInt
+  name String?
+  members GroupMembership[]
+}
+
+model GroupMembership {
+  group_id BigInt
+  participant_id BigInt
+  points Int @default(0)
+  wins   Int @default(0)
+  losses Int @default(0)
+  group CompetitionGroup @relation(fields: [group_id], references: [group_id])
+  participant Participant @relation(fields: [participant_id], references: [participant_id])
+  @@id([group_id, participant_id])
+}
+
+model Match {
+  match_id BigInt @id @default(autoincrement())
+  competition Competition @relation(fields: [competition_id], references: [competition_id])
+  competition_id BigInt
+  stage String?
+  status MatchStatus @default(SCHEDULED)
+  scheduled_at DateTime?
+  venue_name String
+  venue_address String
+  venue_city String
+  participant1 Participant @relation("MatchParticipant1", fields: [participant1_id], references: [participant_id])
+  participant1_id BigInt
+  participant2 Participant @relation("MatchParticipant2", fields: [participant2_id], references: [participant_id])
+  participant2_id BigInt
+  scores Json
+  created_at DateTime @default(now())
+}
+
+model Payment {
+  payment_id BigInt @id @default(autoincrement())
+  participant Participant? @relation(fields: [participant_id], references: [participant_id])
+  participant_id BigInt?
+  booking BookingService? @relation(fields: [booking_id], references: [booking_id])
+  booking_id BigInt?
+  user User @relation(fields: [user_id], references: [user_id])
+  user_id BigInt
+  amount Float
+  currency String? @default("EGP")
+  payment_date DateTime @default(now())
+  status PaymentStatus @default(PENDING)
+  provider_info Json?
+}
