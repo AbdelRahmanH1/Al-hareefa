@@ -94,15 +94,15 @@ enum TeamMemberRole {
 // ===============================
 model User {
   id          BigInt   @id @default(autoincrement())
-  firebaseUid String   @unique
-  fullName    String
+  firebase_id String   @unique
+  full_name    String
   email       String   @unique
   phone       String   @unique
   gender      Gender
-  birthDate   DateTime @db.Date
-  isActive    Boolean    @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  birth_date   DateTime @db.Date
+  is_active    Boolean    @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   //profiles
   playerProfile       PlayerProfile?
@@ -111,7 +111,7 @@ model User {
   adminProfile        AdminProfile?
 
   //relations
-  createdTeams        Team[] @relation("CreatedTeams")
+  created_teams        Team[] @relation("CreatedTeams")
   payments            Payment[]
   multimedia   Multimedia[]
 }
@@ -123,22 +123,22 @@ model PlayerProfile {
   id            BigInt   @id
   user          User     @relation(fields: [userId], references: [id])
   userId        BigInt   @unique
-  preferredGames GameType[]
+  preferred_games GameType[]
   city          String
   guardianId    BigInt?
-  guardian      Guardian? @relation(fields: [guardianId], references: [id])
-  createdAt     DateTime @default(now())
+  guardian      Guardian? @relation(fields: [guardianId], references: [id],onDelete: SetNull)
+  created_at     DateTime @default(now())
   bookings      PlayerBooking[]
-  teamMemberships TeamMember[]
+  team_memberships TeamMember[]
 }
 
 model Guardian {
   id        BigInt @id @default(autoincrement())
-  fullName  String 
+  full_name  String 
   email     String @unique
   phone     String @unique
   relation  Relation @default(FATHER)
-  createdAt DateTime @default(now())
+  created_at DateTime @default(now())
   players   PlayerProfile[]
 }
 
@@ -147,24 +147,24 @@ model Guardian {
 // ===============================
 model CoachProfile {
   id          BigInt @id
-  user        User   @relation(fields: [userId], references: [id])
-  userId      BigInt @unique
+  user        User   @relation(fields: [user_id], references: [id])
+  user_id      BigInt @unique
   bio         String?
   experience  String?
-  createdAt   DateTime @default(now())
+  created_at   DateTime @default(now())
   services    CoachService[]
 }
 
 
 model CoachService {
   id          BigInt @id @default(autoincrement())
-  coach       CoachProfile @relation(fields: [coachId], references: [id])
-  coachId     BigInt
+  coach       CoachProfile @relation(fields: [coach_id], references: [id])
+  coach_id     BigInt
   title       String
   description String?
   price       Float? @default(0)
   duration    Int?
-  createdAt   DateTime @default(now())
+  created_at   DateTime @default(now())
   bookings    PlayerBooking[]
 }
 
@@ -176,8 +176,8 @@ model PlayerBooking {
   serviceId    BigInt
   status       BookingStatus @default(REQUESTED)
   price        Float? @default(0)
-  bookedAt     DateTime @default(now())
-  scheduledAt  DateTime?
+  booked_at    DateTime @default(now())
+  scheduled_at  DateTime?
   notes        String?
   payments     Payment[]
 }
@@ -190,9 +190,9 @@ model Team {
   name        String @unique
   logo        String?
   game        GameType
-  createdBy   User? @relation("CreatedTeams", fields: [createdById], references: [id])
-  createdById BigInt?
-  createdAt   DateTime @default(now())
+  created_by   User? @relation("CreatedTeams", fields: [created_by_id], references: [id])
+  created_by_id BigInt?
+  created_at   DateTime @default(now())
   members     TeamMember[]
   multimedia   Multimedia[]
 }
@@ -221,7 +221,7 @@ model CompetitionType {
   eliminationType EliminationType @default(SINGLE_ELIMINATION)
   createdByAdmin  BigInt?
   competitions    Competition[]
-  createdAt       DateTime @default(now())
+  created_at       DateTime @default(now())
 }
 
 model Competition {
@@ -229,17 +229,17 @@ model Competition {
   name              String
   type              CompetitionType @relation(fields: [typeId], references: [id])
   typeId            BigInt
-  startDate         DateTime
-  endDate           DateTime
-  venueName         String
-  venueAddress      String
-  venueCity         String
-  organization      OrganizationProfile @relation(fields: [organizationId], references: [id])
-  organizationId    BigInt
-  approvalStatus    ApprovalStatus @default(PENDING)
+  start_date         DateTime
+  end_date           DateTime
+  venue_name         String
+  venue_address      String
+  venue_city         String
+  organization      OrganizationProfile @relation(fields: [organization_id], references: [id])
+  organization_id    BigInt
+  approval_status    ApprovalStatus @default(PENDING)
   price             Float @default(0)
-  winnerParticipantId BigInt?  
-  createdAt         DateTime @default(now())
+  winner_participant_id BigInt?  
+  created_at         DateTime @default(now())
   participants      Participant[]
   matches           Match[]
   groups            CompetitionGroup[]
@@ -250,37 +250,37 @@ model Competition {
 
 model Participant {
   id           BigInt @id @default(autoincrement())
-  competition  Competition @relation(fields: [competitionId], references: [id])
-  competitionId BigInt
+  competition  Competition @relation(fields: [competition_id], references: [id])
+  competition_id BigInt
   type         ParticipantType
-  teamId       BigInt?
-  playerId     BigInt?
-  registeredAt DateTime @default(now())
+  team_id       BigInt?
+  player_id     BigInt?
+  registered_at DateTime @default(now())
   qrCode       String?
-  paymentRequired Float?
+  payment_required Float?
 
-  teamParticipation TeamParticipantPayment[] @relation("ParticipantToMembers")
-  groupMemberships  GroupMembership[]
-  matchAsParticipant1 Match[] @relation("MatchParticipant1")
-  matchAsParticipant2 Match[] @relation("MatchParticipant2")
+  team_participation TeamParticipantPayment[] @relation("ParticipantToMembers")
+  group_memberships  GroupMembership[]
+  match_as_participant1 Match[] @relation("MatchParticipant1")
+  match_as_participant2 Match[] @relation("MatchParticipant2")
   payments Payment[]
 
-  @@unique([competitionId, teamId])
-  @@unique([competitionId, playerId])
+  @@unique([competition_id, team_id])
+  @@unique([competition_id, player_id])
 }
 
 model TeamParticipantPayment {
   id           BigInt @id @default(autoincrement())
-  participant  Participant @relation("ParticipantToMembers", fields: [participantId], references: [id])
-  participantId BigInt
+  participant  Participant @relation("ParticipantToMembers", fields: [participant_id], references: [id])
+  participant_id BigInt
 
-  teamId       BigInt
-  playerId     BigInt
-  teamMember   TeamMember @relation(fields: [teamId, playerId], references: [teamId, playerId])
+  team_id       BigInt
+  player_id     BigInt
+  teamMember   TeamMember @relation(fields: [team_id, player_id], references: [teamId, playerId])
 
-  feeShare     Float
-  isPaid       Boolean @default(false)
-  dueDate      DateTime?
+  fee_share     Float
+  is_paid       Boolean @default(false)
+  due_date      DateTime?
   
   payments     Payment[]
 }
@@ -290,21 +290,21 @@ model TeamParticipantPayment {
 // ===============================
 model CompetitionGroup {
   id           BigInt @id @default(autoincrement())
-  competition  Competition @relation(fields: [competitionId], references: [id])
-  competitionId BigInt
+  competition  Competition @relation(fields: [competition_id], references: [id])
+  competition_id BigInt
   name         String?
   members      GroupMembership[]
 }
 
 model GroupMembership {
-  groupId       BigInt
-  participantId BigInt
+  group_id       BigInt
+  participant_id BigInt
   points        Int @default(0)
   wins          Int @default(0)
   losses        Int @default(0)
-  group         CompetitionGroup @relation(fields: [groupId], references: [id])
-  participant   Participant @relation(fields: [participantId], references: [id])
-  @@id([groupId, participantId])
+  group         CompetitionGroup @relation(fields: [group_id], references: [id])
+  participant   Participant @relation(fields: [participant_id], references: [id])
+  @@id([group_id, participant_id])
 }
 
 // ===============================
@@ -312,20 +312,20 @@ model GroupMembership {
 // ===============================
 model Match {
   id                  BigInt @id @default(autoincrement())
-  competition         Competition @relation(fields: [competitionId], references: [id])
-  competitionId       BigInt
+  competition         Competition @relation(fields: [competition_id], references: [id])
+  competition_id       BigInt
   stage               String?
   status              MatchStatus @default(SCHEDULED)
-  scheduledAt         DateTime?
-  venueName           String
-  venueAddress        String
-  venueCity           String
-  participant1        Participant @relation("MatchParticipant1", fields: [participant1Id], references: [id])
-  participant1Id      BigInt
-  participant2        Participant @relation("MatchParticipant2", fields: [participant2Id], references: [id])
-  participant2Id      BigInt
+  scheduled_at         DateTime?
+  venue_name           String
+  venue_address        String
+  venue_city           String
+  participant1        Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id])
+  participant1_id      BigInt
+  participant2        Participant @relation("MatchParticipant2", fields: [participant2_id], references: [id])
+  participant2_id      BigInt
   scores              Json
-  winnerParticipantId BigInt? // nullable for knockout
+  winner_participant_id BigInt? // nullable for knockout
   createdAt           DateTime @default(now())
 }
 
@@ -335,24 +335,24 @@ model Match {
 model Payment {
   id                        BigInt @id @default(autoincrement())
   
-  participantId             BigInt?
-  participant               Participant? @relation(fields: [participantId], references: [id])
+  participant_id             BigInt?
+  participant               Participant? @relation(fields: [participant_id], references: [id])
 
-  teamParticipantPaymentId  BigInt?
-  teamParticipantPayment    TeamParticipantPayment? @relation(fields: [teamParticipantPaymentId], references: [id])
+  team_participant_paymentId  BigInt?
+  teamParticipantPayment    TeamParticipantPayment? @relation(fields: [team_participant_paymentId], references: [id])
 
   bookingId                 BigInt?
   booking                   PlayerBooking? @relation(fields: [bookingId], references: [id])
 
-  userId                    BigInt
-  user                      User @relation(fields: [userId], references: [id])
+  user_id                    BigInt
+  user                      User @relation(fields: [user_id], references: [id])
 
   amount                    Float
   currency                  String? @default("EGP")
-  paymentDate               DateTime @default(now())
-  dueDate                   DateTime?
+  payment_date               DateTime @default(now())
+  due_date                   DateTime?
   status                    PaymentStatus @default(PENDING)
-  providerInfo              Json?
+  provider_info              Json?
 }
 
 // ===============================
@@ -360,23 +360,28 @@ model Payment {
 // ===============================
 model AdminProfile {
   id        BigInt @id
-  user      User  @relation(fields: [userId], references: [id])
-  userId    BigInt @unique
-  createdAt DateTime @default(now())
+  user      User  @relation(fields: [user_id], references: [id])
+  user_id    BigInt @unique
+  created_t DateTime @default(now())
+  approved_organizations OrganizationProfile[]
 }
 
 
 
 model OrganizationProfile {
-  id            BigInt @id
-  user          User   @relation(fields: [userId], references: [id])
-  userId        BigInt @unique
-  ownerName     String
-  approvalStatus ApprovalStatus @default(PENDING)
-  approvedBy    BigInt
-  createdAt     DateTime @default(now())
-  competitions  Competition[]
+  id             BigInt @id
+  user           User   @relation(fields: [user_id], references: [id])
+  user_id         BigInt @unique
+  owner_name      String
+  approval_status ApprovalStatus @default(PENDING)
+
+  approved_by     BigInt?
+  admin          AdminProfile? @relation(fields: [approved_by], references: [id], onDelete: SetNull)
+
+  created_at      DateTime @default(now())
+  competitions   Competition[]
 }
+
 
 // ===============================
 //  MultiMedia 
@@ -384,17 +389,17 @@ model OrganizationProfile {
 
 model Multimedia {
   id             BigInt     @id @default(autoincrement())
-  competition    Competition? @relation(fields: [competitionId], references: [id])
-  competitionId  BigInt?
-  team           Team?       @relation(fields: [teamId], references: [id])
-  teamId         BigInt?
+  competition    Competition? @relation(fields: [competition_id], references: [id])
+  competition_id  BigInt?
+  team           Team?       @relation(fields: [team_id], references: [id])
+  team_id         BigInt?
   title          String
   description    String?
-  mediaType      MediaType   
+  media_type      MediaType   
   url            String      
-  uploadedById   BigInt      
-  uploadedBy     User        @relation(fields: [uploadedById], references: [id])
-  createdAt      DateTime    @default(now())
+  uploaded_by_id   BigInt      
+  uploaded_by     User        @relation(fields: [uploaded_by_id], references: [id])
+  created_at      DateTime    @default(now())
 }
 
 enum MediaType {
