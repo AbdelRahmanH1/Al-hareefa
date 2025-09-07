@@ -6,7 +6,7 @@ import { WrapResponseInterceptor } from './shared/interceptors/wrap-response.int
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.use(new WrapResponseInterceptor());
+  app.useGlobalInterceptors(new WrapResponseInterceptor());
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
