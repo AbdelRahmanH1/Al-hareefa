@@ -48,6 +48,7 @@ CREATE TABLE "public"."User" (
     "email" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "gender" "public"."Gender" NOT NULL,
+    "role" "public"."UserRole" NOT NULL,
     "birth_date" DATE NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
