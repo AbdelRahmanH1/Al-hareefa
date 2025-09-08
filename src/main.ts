@@ -4,6 +4,10 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
 import { WrapResponseInterceptor } from './shared/interceptors/wrap-response.interceptor';
 
 async function bootstrap() {
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+
   const app = await NestFactory.create(AppModule);
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new WrapResponseInterceptor());
