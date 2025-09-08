@@ -99,6 +99,7 @@ model User {
   email       String   @unique
   phone       String   @unique
   gender      Gender
+  role  UserRole
   birth_date   DateTime @db.Date
   is_active    Boolean    @default(true)
   created_at   DateTime @default(now())
