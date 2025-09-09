@@ -126,6 +126,7 @@ CREATE TABLE "public"."Team" (
     "logo" TEXT,
     "game" "public"."GameType" NOT NULL,
     "created_by_id" BIGINT,
+    "created_by_role" "public"."UserRole" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Team_pkey" PRIMARY KEY ("id")
@@ -148,9 +149,11 @@ CREATE TABLE "public"."CompetitionType" (
     "id" BIGSERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "rules" TEXT NOT NULL,
-    "sport" TEXT NOT NULL,
+    "sport" "public"."GameType" NOT NULL,
     "eliminationType" "public"."EliminationType" NOT NULL DEFAULT 'SINGLE_ELIMINATION',
     "createdByAdmin" BIGINT,
+    "min_player_per_team" INTEGER NOT NULL,
+    "max_player_per_team" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CompetitionType_pkey" PRIMARY KEY ("id")
@@ -170,6 +173,8 @@ CREATE TABLE "public"."Competition" (
     "approval_status" "public"."ApprovalStatus" NOT NULL DEFAULT 'PENDING',
     "price" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "winner_participant_id" BIGINT,
+    "min_age" INTEGER NOT NULL,
+    "max_age" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Competition_pkey" PRIMARY KEY ("id")
@@ -226,6 +231,7 @@ CREATE TABLE "public"."GroupMembership" (
 CREATE TABLE "public"."Match" (
     "id" BIGSERIAL NOT NULL,
     "competition_id" BIGINT NOT NULL,
+    "group_id" BIGINT,
     "stage" TEXT,
     "status" "public"."MatchStatus" NOT NULL DEFAULT 'SCHEDULED',
     "scheduled_at" TIMESTAMP(3),
@@ -383,6 +389,9 @@ ALTER TABLE "public"."GroupMembership" ADD CONSTRAINT "GroupMembership_participa
 
 -- AddForeignKey
 ALTER TABLE "public"."Match" ADD CONSTRAINT "Match_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "public"."Competition"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Match" ADD CONSTRAINT "Match_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "public"."CompetitionGroup"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Match" ADD CONSTRAINT "Match_participant1_id_fkey" FOREIGN KEY ("participant1_id") REFERENCES "public"."Participant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
