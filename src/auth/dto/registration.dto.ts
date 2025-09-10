@@ -3,22 +3,37 @@ import {
   IsDateString,
   IsEnum,
   IsString,
+  IsPhoneNumber,
   ValidateNested,
+  IsEmail,
+  IsEmpty,
+  Length,
 } from 'class-validator';
-import { PlayerProfileDto } from './player.dto';
-import { CoachProfileDto } from './coach.dto';
-import { OrganizationProfileDto } from './organization.dto';
-import { UserRole } from 'generated/prisma';
+import { CreatePlayerProfileDto } from './CreatePlayer.dto';
+import { CreateCoachProfileDto } from './createCoach.dto';
+import { CreateOrganizationProfileDto } from './CreateOrganization.dto';
+import { UserRole, Gender } from '@prisma/client';
 
 export class RegisterUserDto {
   @IsString()
   firebaseUid: string;
 
-  @IsString()
+  @IsEmail()
   email: string;
 
   @IsString()
+  @Length(3, 50)
   fullName: string;
+
+  @IsPhoneNumber('EG')
+  phone: string;
+
+  @IsEnum(Gender)
+  gender: Gender;
+
+  @IsString()
+  @Length(5, 20)
+  city: string;
 
   @IsEnum(UserRole)
   role: UserRole;
@@ -28,5 +43,8 @@ export class RegisterUserDto {
 
   @ValidateNested()
   @Type(() => Object)
-  profile: PlayerProfileDto | CoachProfileDto | OrganizationProfileDto;
+  profile:
+    | CreatePlayerProfileDto
+    | CreateCoachProfileDto
+    | CreateOrganizationProfileDto;
 }
