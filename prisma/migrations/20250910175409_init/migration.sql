@@ -35,6 +35,9 @@ CREATE TYPE "public"."GameType" AS ENUM ('FOOTBALL', 'BASKETBALL', 'HANDBALL', '
 CREATE TYPE "public"."EliminationType" AS ENUM ('SINGLE_ELIMINATION', 'DOUBLE_ELIMINATION', 'KNOCKOUT');
 
 -- CreateEnum
+CREATE TYPE "public"."MatchStage" AS ENUM ('GROUP_STAGE', 'FIRST_ELIMINATION', 'SECOND_ELIMINATION', 'FINAL');
+
+-- CreateEnum
 CREATE TYPE "public"."TeamMemberRole" AS ENUM ('PLAYER', 'CAPTAIN');
 
 -- CreateEnum
@@ -175,6 +178,7 @@ CREATE TABLE "public"."Competition" (
     "winner_participant_id" BIGINT,
     "min_age" INTEGER NOT NULL,
     "max_age" INTEGER NOT NULL,
+    "max_teams" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Competition_pkey" PRIMARY KEY ("id")

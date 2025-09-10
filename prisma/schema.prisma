@@ -84,6 +84,14 @@ enum EliminationType {
   KNOCKOUT
 }
 
+enum MatchStage {
+  GROUP_STAGE
+  FIRST_ELIMINATION
+  SECOND_ELIMINATION
+  FINAL
+}
+
+
 enum TeamMemberRole {
   PLAYER
   CAPTAIN
@@ -245,6 +253,7 @@ model Competition {
   winner_participant_id BigInt?  
   min_age Int
   max_age Int
+  max_teams Int?
   created_at         DateTime @default(now())
   participants      Participant[]
   matches           Match[]
