@@ -12,6 +12,7 @@ export const AuthorizationGuard = (...roles: UserRole[]): CanActivate => {
     canActivate(context: ExecutionContext): boolean {
       const request = context.switchToHttp().getRequest();
       const user = request.user;
+      if (roles.length == 0) return true;
       if (!user || !roles.includes(user.role)) {
         throw new ForbiddenException("Can't access");
       }
