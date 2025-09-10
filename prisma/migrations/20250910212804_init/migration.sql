@@ -52,6 +52,7 @@ CREATE TABLE "public"."User" (
     "phone" TEXT NOT NULL,
     "gender" "public"."Gender" NOT NULL,
     "role" "public"."UserRole" NOT NULL,
+    "city" TEXT NOT NULL,
     "birth_date" DATE NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -65,7 +66,6 @@ CREATE TABLE "public"."PlayerProfile" (
     "id" BIGINT NOT NULL,
     "userId" BIGINT NOT NULL,
     "preferred_games" "public"."GameType"[],
-    "city" TEXT NOT NULL,
     "guardianId" BIGINT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

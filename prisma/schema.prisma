@@ -108,6 +108,7 @@ model User {
   phone       String   @unique
   gender      Gender
   role  UserRole
+  city          String
   birth_date   DateTime @db.Date
   is_active    Boolean    @default(true)
   created_at   DateTime @default(now())
@@ -133,7 +134,6 @@ model PlayerProfile {
   user          User     @relation(fields: [userId], references: [id])
   userId        BigInt   @unique
   preferred_games GameType[]
-  city          String
   guardianId    BigInt?
   guardian      Guardian? @relation(fields: [guardianId], references: [id],onDelete: SetNull)
   created_at     DateTime @default(now())
