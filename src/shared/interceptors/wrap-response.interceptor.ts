@@ -19,12 +19,13 @@ export class WrapResponseInterceptor<T>
     return next.handle().pipe(
       map((data: any) => {
         const message = data?.message ?? null;
-        const payload = data?.data ?? data;
+
+        const { message: _removed, ...rest } = data ?? {};
 
         const response: ResponseDto<T> = {
           success: true,
           message,
-          data: payload,
+          data: Object.keys(rest).length > 0 ? rest : null,
         };
 
         return response;

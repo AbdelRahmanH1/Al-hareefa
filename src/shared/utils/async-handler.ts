@@ -9,12 +9,10 @@ export const asyncHandler = (
     try {
       return await fn(...args);
     } catch (err) {
-      // Forward HttpExceptions directly
       if (err instanceof HttpException) {
         throw err;
       }
 
-      // Otherwise, wrap into HttpException
       throw new HttpException(errorMessage, statusCode);
     }
   };
