@@ -153,7 +153,6 @@ CREATE TABLE "public"."CompetitionType" (
     "name" TEXT NOT NULL,
     "rules" TEXT NOT NULL,
     "sport" "public"."GameType" NOT NULL,
-    "eliminationType" "public"."EliminationType" NOT NULL DEFAULT 'SINGLE_ELIMINATION',
     "createdByAdmin" BIGINT,
     "min_player_per_team" INTEGER NOT NULL,
     "max_player_per_team" INTEGER NOT NULL,
@@ -179,6 +178,7 @@ CREATE TABLE "public"."Competition" (
     "min_age" INTEGER NOT NULL,
     "max_age" INTEGER NOT NULL,
     "max_teams" INTEGER,
+    "eliminationType" "public"."EliminationType" NOT NULL DEFAULT 'SINGLE_ELIMINATION',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Competition_pkey" PRIMARY KEY ("id")

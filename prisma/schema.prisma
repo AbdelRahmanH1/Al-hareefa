@@ -228,7 +228,6 @@ model CompetitionType {
   name            String
   rules           String
   sport           GameType
-  eliminationType EliminationType @default(SINGLE_ELIMINATION)
   createdByAdmin  BigInt?
   min_player_per_team Int
   max_player_per_team Int
@@ -254,6 +253,7 @@ model Competition {
   min_age Int
   max_age Int
   max_teams Int?
+  eliminationType EliminationType @default(SINGLE_ELIMINATION)
   created_at         DateTime @default(now())
   participants      Participant[]
   matches           Match[]
