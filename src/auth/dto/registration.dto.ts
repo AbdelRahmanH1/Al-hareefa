@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -35,10 +35,11 @@ export class RegisterUserDto {
   @Length(5, 20)
   city: string;
 
-  @IsEnum(UserRole)
+  @IsEnum(UserRole, { each: true })
   role: UserRole;
 
   @IsDateString()
+  @Transform(({ value }) => new Date(value))
   birthDate: string;
 
   @ValidateNested()

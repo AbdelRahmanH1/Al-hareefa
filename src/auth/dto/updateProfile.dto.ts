@@ -4,13 +4,18 @@ import {
   IsEmail,
   IsDateString,
   ValidateNested,
+  Length,
+  IsEnum,
+  IsPhoneNumber,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { GameType, UserRole } from 'generated/prisma';
 
 // ================= User Base Info =================
 class UpdateUserDto {
   @IsOptional()
   @IsString()
+  @Length(3, 50, { message: 'full name must be between 3 and 50 characters' })
   full_name?: string;
 
   @IsOptional()
@@ -18,28 +23,29 @@ class UpdateUserDto {
   email?: string;
 
   @IsOptional()
-  @IsString()
-  phone?: string;
+  @IsPhoneNumber('EG')
+  phone?: any;
 
   @IsOptional()
   @IsString()
-  gender?: string;
+  gender?: UserRole;
 
-  @IsOptional()
-  @IsDateString()
-  birth_date?: string;
-}
-
-class UpdatePlayerProfileDto {
   @IsOptional()
   @IsString()
   city?: string;
 
   @IsOptional()
+  @Transform(({ value }) => new Date(value))
+  birth_date?: string;
+}
+
+class UpdatePlayerProfileDto {
+  @IsOptional()
   guardianId?: number;
 
   @IsOptional()
-  preferred_games?: string[];
+  @IsEnum(GameType, { each: true })
+  preferred_games?: GameType[];
 }
 
 class UpdateCoachProfileDto {
@@ -63,18 +69,22 @@ class UpdateOrganizationProfileDto {
 }
 
 export class UpdateProfileDto {
+  @IsOptional()
   @ValidateNested()
   @Type(() => UpdateUserDto)
   user?: UpdateUserDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => UpdatePlayerProfileDto)
   playerProfile?: UpdatePlayerProfileDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => UpdateCoachProfileDto)
   coachProfile?: UpdateCoachProfileDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => UpdateOrganizationProfileDto)
   organizationProfile?: UpdateOrganizationProfileDto;
