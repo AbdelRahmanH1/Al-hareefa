@@ -261,8 +261,6 @@ model Competition {
   matches           Match[]
   groups            CompetitionGroup[]
   multimedia   Multimedia[]
-
-   
 }
 
 model Participant {
