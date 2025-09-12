@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { jwtConfig } from 'src/config/JwtConfig';
 import { RedisJwtService } from 'src/redis/redis-jwt.service';
+import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
@@ -24,7 +25,7 @@ export class AuthenticationGuard implements CanActivate {
     }
 
     try {
-      const decoded = this.jwtService.verify(token, {
+      const decoded = this.jwtService.verify<UserPayload>(token, {
         secret: jwtConfig.SECRET_KEY,
       });
       const isValid = await this.redis.validateToken(decoded.userId, token);
