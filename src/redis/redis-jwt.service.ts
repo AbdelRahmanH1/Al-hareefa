@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  OnModuleDestroy,
-  HttpStatus,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -14,18 +9,18 @@ export class RedisJwtService implements OnModuleDestroy {
     await this.client.set(key, 'true');
   }
 
-  async validateToken(userId: string, token: string): Promise<boolean> {
+  async validateToken(userId: bigint, token: string): Promise<boolean> {
     const key = `auth:${userId}:${token}`;
     const exists = await this.client.exists(key);
     return exists === 1;
   }
 
-  async revokeToken(userId: string, token: string) {
+  async revokeToken(userId: bigint, token: string) {
     const key = `auth:${userId}:${token}`;
     await this.client.del(key);
   }
 
-  async revokeAllTokens(userId: string) {
+  async revokeAllTokens(userId: bigint) {
     const keys = await this.client.keys(`auth:${userId}:*`);
     if (keys.length > 0) {
       await this.client.del(keys);
