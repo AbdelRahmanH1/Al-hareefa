@@ -124,6 +124,7 @@ model User {
   created_teams        Team[] @relation("CreatedTeams")
   payments            Payment[]
   multimedia   Multimedia[]
+  notification Notification[]
 }
 
 // ===============================
@@ -385,13 +386,22 @@ model AdminProfile {
   approved_organizations OrganizationProfile[]
 }
 
-
+enum OrganizationType {
+  CLUB
+  YOUTH_CENTER
+  STATUDIM
+}
 
 model OrganizationProfile {
   id             BigInt @id
   user           User   @relation(fields: [user_id], references: [id])
   user_id         BigInt @unique
   owner_name      String
+  type  OrganizationType
+  district        String
+  street_address String
+  address_description String?
+  google_map_link String?
   approval_status ApprovalStatus @default(PENDING)
   approved_by     BigInt?
   admin          AdminProfile? @relation(fields: [approved_by], references: [id], onDelete: SetNull)
@@ -423,4 +433,15 @@ enum MediaType {
   IMAGE
   VIDEO
   DOCUMENT
+}
+
+model Notification {
+  id             BigInt   @id @default(autoincrement())
+  user           User     @relation(fields: [user_id], references: [id])
+  user_id        BigInt
+  firebase_token String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  @@unique([user_id, firebase_token])
+
 }
