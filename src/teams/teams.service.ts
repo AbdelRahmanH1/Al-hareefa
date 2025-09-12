@@ -134,10 +134,18 @@ export class TeamsService {
         logo: true,
         game: true,
         members: {
-          select: {
-            status: true,
-            player: { select: { user: { select: { full_name: true } } } },
-          },
+          select: owned
+            ? {
+                status: true,
+                player: {
+                  select: { user: { select: { full_name: true, id: true } } },
+                },
+              }
+            : {
+                player: {
+                  select: { user: { select: { full_name: true, id: true } } },
+                },
+              },
         },
       },
     });
@@ -169,8 +177,9 @@ export class TeamsService {
         game: true,
         members: {
           select: {
-            status: true,
-            player: { select: { user: { select: { full_name: true } } } },
+            player: {
+              select: { user: { select: { full_name: true, id: true } } },
+            },
           },
         },
       },

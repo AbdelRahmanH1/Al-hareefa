@@ -16,6 +16,8 @@ import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/auth/guards/authorization.gurad';
 import { UserRole } from 'generated/prisma';
 import { UpdateTeamRequest } from './dto/UpdateTeam.dto';
+import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
+import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 
 @Controller('teams')
 export class TeamsController {
@@ -26,7 +28,10 @@ export class TeamsController {
     AuthenticationGuard,
     AuthorizationGuard(UserRole.PLAYER, UserRole.COACH),
   )
-  async createTeam(@Req() req: any, @Body() data: CreateTeamRequest) {
+  async createTeam(
+    @Req() req: { user: UserPayload },
+    @Body() data: CreateTeamRequest,
+  ) {
     return this.teamService.createTeam(data, req.user.userId, req.user.role);
   }
 
@@ -36,8 +41,8 @@ export class TeamsController {
     AuthorizationGuard(UserRole.COACH, UserRole.PLAYER),
   )
   async updateTeam(
-    @Req() req: any,
-    @Param('teamId') teamId: bigint,
+    @Req() req: { user: UserPayload },
+    @Param('teamId', ParseBigIntPipe) teamId: bigint,
     @Body() data: UpdateTeamRequest,
   ) {
     return this.teamService.updateTeam(teamId, req.user.userId, data);
@@ -48,7 +53,10 @@ export class TeamsController {
     AuthenticationGuard,
     AuthorizationGuard(UserRole.COACH, UserRole.PLAYER),
   )
-  async deleteTeam(@Param('teamId') teamId: bigint, @Req() req: any) {
+  async deleteTeam(
+    @Param('teamId', ParseBigIntPipe) teamId: bigint,
+    @Req() req: { user: UserPayload },
+  ) {
     return this.teamService.softDeleteTeam(teamId, req.user.userId);
   }
 
@@ -58,7 +66,7 @@ export class TeamsController {
     AuthorizationGuard(UserRole.COACH, UserRole.PLAYER),
   )
   async getTeams(
-    @Req() req,
+    @Req() req: { user: UserPayload },
     @Query('owned') owned?: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -70,7 +78,7 @@ export class TeamsController {
   @Get('/search')
   @UseGuards(AuthenticationGuard)
   async findTeamById(
-    @Query('teamId') teamId: bigint,
+    @Query('teamId', ParseBigIntPipe) teamId: bigint,
     @Query('name') name: string,
   ) {
     return this.teamService.searchTeam({ teamId, name });
