@@ -29,7 +29,9 @@ ALTER TABLE "PlayerBooking"
 ADD CONSTRAINT price_non_negative CHECK (price >= 0);
 
 ALTER TABLE "PlayerBooking"
-ADD CONSTRAINT valid_status_booking CHECK (status IN ('REQUESTED','CONFIRMED','COMPLETED','CANCELED'));
+ADD CONSTRAINT valid_status_booking CHECK (
+  status IN ('REQUESTED','CONFIRMED','COMPLETED','CANCELED')
+);
 
 -- ===============================
 -- Constraints for Competition
@@ -53,7 +55,9 @@ ADD CONSTRAINT team_name_not_empty CHECK (char_length(name) > 0);
 -- Constraints for TeamMember
 -- ===============================
 ALTER TABLE "TeamMember"
-ADD CONSTRAINT valid_membership_status CHECK (status IN ('PENDING','ACCEPTED','REJECTED'));
+ADD CONSTRAINT valid_membership_status CHECK (
+  status IN ('PENDING','ACCEPTED','REJECTED')
+);
 
 -- ===============================
 -- Constraints for Match
@@ -65,9 +69,11 @@ ADD CONSTRAINT scores_json_format CHECK (
 );
 
 ALTER TABLE "Match"
-ADD CONSTRAINT valid_match_status CHECK (status IN ('SCHEDULED','IN_PROGRESS','COMPLETED','CANCELED'));
+ADD CONSTRAINT valid_match_status CHECK (
+  status IN ('SCHEDULED','IN_PROGRESS','COMPLETED','CANCELED')
+);
 
--- winner relation already exists in schema as winner_participant_id, no need to add manually
+-- winner relation already exists as winner_participant_id, no need to add manually
 
 -- ===============================
 -- Constraints for Payment
@@ -76,7 +82,9 @@ ALTER TABLE "Payment"
 ADD CONSTRAINT amount_non_negative CHECK (amount >= 0);
 
 ALTER TABLE "Payment"
-ADD CONSTRAINT valid_payment_status CHECK (status IN ('PENDING','COMPLETED','FAILED','CANCELED'));
+ADD CONSTRAINT valid_payment_status CHECK (
+  status IN ('PENDING','COMPLETED','FAILED','CANCELED')
+);
 
 -- ===============================
 -- Constraints for TeamParticipantPayment

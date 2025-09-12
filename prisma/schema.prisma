@@ -203,6 +203,7 @@ model Team {
   created_by_id BigInt?
   created_by_role UserRole
   created_at   DateTime @default(now())
+  is_deleted Boolean @default(false)
   members     TeamMember[]
   multimedia   Multimedia[]
 }
