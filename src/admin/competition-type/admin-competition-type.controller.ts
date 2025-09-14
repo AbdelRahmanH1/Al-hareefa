@@ -8,14 +8,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { UserRole } from 'generated/prisma';
 import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/auth/guards/authorization.gurad';
 import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 import { CreateCompetitionType } from './dto/CreateCompetition-type.dto';
-import { CompetitionTypeService } from './competition-type.service';
+import { CompetitionTypeService } from './admin-competition-type.service';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { UpdateCompetitionType } from './dto/UpdateCompetiton-type.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('admin/competition-type')
 @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ADMIN))

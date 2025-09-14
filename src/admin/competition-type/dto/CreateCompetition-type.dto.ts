@@ -1,5 +1,5 @@
+import { GameType } from '@prisma/client';
 import { IsEnum, IsInt, IsString, Length, Max, Min } from 'class-validator';
-import { GameType } from 'generated/prisma';
 
 export class CreateCompetitionType {
   @IsString()

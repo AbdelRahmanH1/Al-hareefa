@@ -1,4 +1,4 @@
-import { GameType } from 'generated/prisma';
+import { GameType } from '@prisma/client';
 import { Expose } from 'class-transformer';
 
 export class CompetitionTypeResponseDto {

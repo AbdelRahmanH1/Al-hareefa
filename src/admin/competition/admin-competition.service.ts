@@ -1,0 +1,97 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ApprovalStatus } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { CompetitionResponseDto } from './dto/response/Competition-response.dto';
+import { UpdateCompetitionStatusDto } from './dto/request/UpdateCompeitionStatus.dto';
+import { ResponseDto } from 'src/shared/dto/response.dto';
+
+@Injectable()
+export class CompetitionService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getCompetitionsByStatus(
+    status?: string,
+    page = 1,
+    limit = 10,
+  ): Promise<ResponseDto<CompetitionResponseDto[]>> {
+    const skip = (page - 1) * limit;
+    const normalizedStatus =
+      status &&
+      Object.values(ApprovalStatus).includes(
+        status.toUpperCase() as ApprovalStatus,
+      )
+        ? (status.toUpperCase() as ApprovalStatus)
+        : ApprovalStatus.PENDING;
+
+    const competitions = await this.prisma.competition.findMany({
+      where: { approval_status: normalizedStatus },
+      include: {
+        organization: {
+          select: { user: { select: { full_name: true, id: true } } },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
+    const dto = plainToInstance(
+      CompetitionResponseDto,
+      competitions.map((comp) => ({
+        ...comp,
+        organization_name: comp.organization.user.full_name,
+      })),
+    );
+
+    return {
+      success: true,
+      message: `Competitions fetched successfully`,
+      data: dto,
+    };
+  }
+
+  async updateCompetitionStatus(
+    id: bigint,
+    body: UpdateCompetitionStatusDto,
+  ): Promise<ResponseDto<CompetitionResponseDto>> {
+    const competitions = await this.prisma.competition.findFirst({
+      where: { id, approval_status: ApprovalStatus.PENDING },
+      include: {
+        organization: {
+          select: { user: { select: { full_name: true, id: true } } },
+        },
+      },
+    });
+
+    if (!competitions) {
+      throw new NotFoundException('Competition not found');
+    }
+
+    const updatedCom = await this.prisma.competition.update({
+      where: { id },
+      data: { approval_status: body.status },
+      include: {
+        organization: {
+          select: { user: { select: { full_name: true, id: true } } },
+        },
+      },
+    });
+    const dto = plainToInstance(
+      CompetitionResponseDto,
+      {
+        ...updatedCom,
+        organization_name: updatedCom.organization.user.full_name,
+      },
+      { excludeExtraneousValues: true },
+    );
+
+    return {
+      success: true,
+      message: `Organization status updated to ${updatedCom.approval_status}`,
+      data: dto,
+    };
+  }
+}

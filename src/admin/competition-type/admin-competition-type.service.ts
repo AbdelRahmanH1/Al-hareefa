@@ -5,16 +5,19 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCompetitionType } from './dto/CreateCompetition-type.dto';
-import { getCompetitionStatus } from 'src/shared/helpers/competition-status.util';
 import { UpdateCompetitionType } from './dto/UpdateCompetiton-type.dto';
 import { plainToInstance } from 'class-transformer';
 import { CompetitionTypeResponseDto } from './dto/competition-type-response.dto';
+import { ResponseDto } from 'src/shared/dto/response.dto';
 
 @Injectable()
 export class CompetitionTypeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createGame(userId: bigint, request: CreateCompetitionType) {
+  async createGame(
+    userId: bigint,
+    request: CreateCompetitionType,
+  ): Promise<ResponseDto<CompetitionTypeResponseDto>> {
     const gameExists = await this.prisma.competitionType.findFirst({
       where: { name: request.name },
     });
@@ -32,12 +35,13 @@ export class CompetitionTypeService {
     const created = await this.prisma.competitionType.create({ data });
 
     return {
+      success: true,
       message: 'Competition type added successfully',
       data: plainToInstance(CompetitionTypeResponseDto, created),
     };
   }
 
-  async deleteGame(gameId: bigint) {
+  async deleteGame(gameId: bigint): Promise<ResponseDto<any>> {
     const gameExists = await this.prisma.competitionType.findUnique({
       where: { id: gameId },
     });
@@ -59,10 +63,17 @@ export class CompetitionTypeService {
 
     await this.prisma.competitionType.delete({ where: { id: gameId } });
 
-    return { message: 'Competition type deleted successfully' };
+    return {
+      success: true,
+      message: 'Competition type deleted successfully',
+      data: null,
+    };
   }
 
-  async updateGame(gameId: bigint, dto: UpdateCompetitionType) {
+  async updateGame(
+    gameId: bigint,
+    dto: UpdateCompetitionType,
+  ): Promise<ResponseDto<CompetitionTypeResponseDto>> {
     const gameExists = await this.prisma.competitionType.findUnique({
       where: { id: gameId },
     });
@@ -82,6 +93,7 @@ export class CompetitionTypeService {
     });
 
     return {
+      success: true,
       message: 'Competition type updated successfully',
       data: plainToInstance(CompetitionTypeResponseDto, comptition_type),
     };
