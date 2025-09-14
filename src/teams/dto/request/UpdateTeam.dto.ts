@@ -1,5 +1,5 @@
+import { GameType } from '@prisma/client';
 import { IsEnum, IsOptional, Length } from 'class-validator';
-import { GameType } from 'generated/prisma';
 
 export class UpdateTeamRequest {
   @IsOptional()

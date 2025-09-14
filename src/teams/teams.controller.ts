@@ -10,14 +10,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CreateTeamRequest } from './dto/CreateTeam.dto';
+import { CreateTeamRequest } from './dto/request/CreateTeam.dto';
 import { TeamsService } from './teams.service';
 import { AuthenticationGuard } from 'src/auth/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/auth/guards/authorization.gurad';
-import { UserRole } from 'generated/prisma';
-import { UpdateTeamRequest } from './dto/UpdateTeam.dto';
+import { UpdateTeamRequest } from './dto/request/UpdateTeam.dto';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
+import { UserRole } from '@prisma/client';
 
 @Controller('teams')
 export class TeamsController {

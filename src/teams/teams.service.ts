@@ -5,15 +5,23 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateTeamRequest } from './dto/CreateTeam.dto';
+import { CreateTeamRequest } from './dto/request/CreateTeam.dto';
 import { UserRole } from '@prisma/client';
-import { UpdateTeamRequest } from './dto/UpdateTeam.dto';
+import { UpdateTeamRequest } from './dto/request/UpdateTeam.dto';
+import { ResponseDto } from 'src/shared/dto/response.dto';
+import { TeamResponseDto } from './dto/response/Team-response.dto';
+import { plainToInstance } from 'class-transformer';
+import { PaginatedTeamsResponseDto } from './dto/response/PaginatedTeams-response.dto';
 
 @Injectable()
 export class TeamsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createTeam(request: CreateTeamRequest, userId: bigint, role: UserRole) {
+  async createTeam(
+    request: CreateTeamRequest,
+    userId: bigint,
+    role: UserRole,
+  ): Promise<ResponseDto<TeamResponseDto>> {
     const isNameExists = await this.prisma.team.findUnique({
       where: { name: request.name },
     });
@@ -23,12 +31,32 @@ export class TeamsService {
         ...request,
         created_by_id: userId,
         created_by_role: role,
+        members: {
+          create: {
+            playerId: userId,
+            roleInTeam: 'CAPTAIN',
+            invitedAt: new Date(),
+            respondedAt: new Date(),
+          },
+        },
       },
     });
-    return { message: 'Team created successfully', newTeam };
+
+    const response = plainToInstance(TeamResponseDto, newTeam, {
+      excludeExtraneousValues: true,
+    });
+    return {
+      success: true,
+      message: 'Team created successfully',
+      data: response,
+    };
   }
 
-  async updateTeam(teamId: bigint, userId: bigint, request: UpdateTeamRequest) {
+  async updateTeam(
+    teamId: bigint,
+    userId: bigint,
+    request: UpdateTeamRequest,
+  ): Promise<ResponseDto<TeamResponseDto>> {
     const dataToUpdate = Object.fromEntries(
       Object.entries(request).filter(
         ([_, value]) => value != undefined && value != null && value != '',
@@ -58,7 +86,14 @@ export class TeamsService {
       data: dataToUpdate,
     });
 
-    return { message: 'Team updated successfully', updatedTeam };
+    const response = plainToInstance(TeamResponseDto, updatedTeam, {
+      excludeExtraneousValues: true,
+    });
+    return {
+      success: true,
+      message: 'Team updated successfully',
+      data: response,
+    };
   }
 
   async softDeleteTeam(teamId: bigint, userId: bigint) {
@@ -98,7 +133,7 @@ export class TeamsService {
     });
 
     return {
-      message: 'Team deleted successfully (soft delete)',
+      message: 'Team deleted successfully',
     };
   }
 
@@ -107,7 +142,7 @@ export class TeamsService {
     page: number = 1,
     limit: number = 10,
     owned?: boolean,
-  ) {
+  ): Promise<ResponseDto<PaginatedTeamsResponseDto>> {
     const skip = (page - 1) * limit;
 
     let whereClause;
@@ -130,13 +165,13 @@ export class TeamsService {
       take: limit,
       orderBy: { created_at: 'desc' },
       select: {
+        id: true,
         name: true,
         logo: true,
         game: true,
         members: {
           select: owned
             ? {
-                status: true,
                 player: {
                   select: { user: { select: { full_name: true, id: true } } },
                 },
@@ -152,16 +187,39 @@ export class TeamsService {
 
     const total = await this.prisma.team.count({ where: whereClause });
 
-    return {
-      message: 'Teams fetched successfully',
-      data: {
-        teams,
-        meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    const paginatedResponse: PaginatedTeamsResponseDto = {
+      items: teams.map((team) => ({
+        id: team.id.toString(),
+        name: team.name,
+        logo: team.logo,
+        game: team.game,
+        members: team.members.map((m) => ({
+          id: m.player.user.id.toString(),
+          full_name: m.player.user.full_name,
+        })),
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
+    };
+
+    return {
+      success: true,
+      message: 'Teams fetched successfully',
+      data: paginatedResponse,
     };
   }
 
-  async searchTeam({ teamId, name }: { teamId?: bigint; name?: string }) {
+  async searchTeam({
+    teamId,
+    name,
+  }: {
+    teamId?: bigint;
+    name?: string;
+  }): Promise<ResponseDto<TeamResponseDto>> {
     if (!teamId && !name) {
       throw new BadRequestException('teamId or name must be provided');
     }
@@ -172,6 +230,7 @@ export class TeamsService {
         is_deleted: false,
       },
       select: {
+        id: true,
         name: true,
         logo: true,
         game: true,
@@ -185,6 +244,26 @@ export class TeamsService {
       },
     });
     if (!team) throw new NotFoundException('Team not found');
-    return { message: 'get team successfully', data: { team } };
+
+    const teamResponse = plainToInstance(
+      TeamResponseDto,
+      {
+        id: team.id.toString(),
+        name: team.name,
+        logo: team.logo,
+        game: team.game,
+        members: team.members.map((m) => ({
+          id: m.player.user.id.toString(),
+          full_name: m.player.user.full_name,
+        })),
+      },
+      { excludeExtraneousValues: true },
+    );
+
+    return {
+      success: true,
+      message: 'Team fetched successfully',
+      data: teamResponse,
+    };
   }
 }
