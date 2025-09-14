@@ -9,6 +9,7 @@ import { UpdateCompetitionType } from './dto/UpdateCompetiton-type.dto';
 import { plainToInstance } from 'class-transformer';
 import { CompetitionTypeResponseDto } from './dto/competition-type-response.dto';
 import { ResponseDto } from 'src/shared/dto/response.dto';
+import { GameType } from '@prisma/client';
 
 @Injectable()
 export class CompetitionTypeService {
@@ -97,5 +98,11 @@ export class CompetitionTypeService {
       message: 'Competition type updated successfully',
       data: plainToInstance(CompetitionTypeResponseDto, comptition_type),
     };
+  }
+
+  // support function
+  async competition_option() {
+    const gameTypes = Object.values(GameType);
+    return { success: true, message: 'Game options', data: { gameTypes } };
   }
 }

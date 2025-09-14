@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
@@ -43,5 +44,10 @@ export class CompetitionTypeController {
     @Body() data: UpdateCompetitionType,
   ) {
     return this.service.updateGame(gameId, data);
+  }
+
+  @Get('option')
+  async getOptions() {
+    return this.service.competition_option();
   }
 }
