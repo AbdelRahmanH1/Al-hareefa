@@ -66,10 +66,7 @@ enum Relation {
   OTHER
 }
 
-enum ParticipantType {
-  TEAM
-  PLAYER
-}
+
 
 enum GameType {
   FOOTBALL
@@ -125,6 +122,9 @@ model User {
   payments            Payment[]
   multimedia   Multimedia[]
   notification Notification[]
+  send_invites TeamInvite[] @relation("InvitedByUser")
+  received_invites TeamInvite[] @relation("InvitedUser")
+
 }
 
 // ===============================
@@ -205,15 +205,38 @@ model Team {
   created_by_role UserRole
   created_at   DateTime @default(now())
   is_deleted Boolean @default(false)
+
   members     TeamMember[]
   multimedia   Multimedia[]
+  team_invites TeamInvite[]
 }
+
+model TeamInvite {
+  id          BigInt   @id @default(autoincrement())
+  
+  team        Team     @relation(fields: [team_id], references: [id])
+  team_id     BigInt
+  
+  invited     User     @relation("InvitedUser", fields: [invited_id], references: [id])
+  invited_id  BigInt
+  
+  invited_role UserRole 
+  invited_email  String?
+  invited_by   User       @relation("InvitedByUser", fields: [invited_by_id], references: [id])
+  invited_by_id BigInt
+  
+  status       ApprovalStatus @default(PENDING)
+  
+  created_at   DateTime @default(now())
+  expires_at   DateTime?
+}
+
+
 
 model TeamMember {
   teamId       BigInt
   playerId     BigInt
   roleInTeam   TeamMemberRole @default(PLAYER)
-  status       MembershipStatus @default(PENDING)
   invitedAt    DateTime @default(now())
   respondedAt  DateTime?
   team         Team @relation(fields: [teamId], references: [id])
@@ -237,30 +260,42 @@ model CompetitionType {
   created_at       DateTime @default(now())
 }
 
+enum FeeType {
+  SINGLE             
+  TEAM_SHARED_FEE     
+  TEAM_SINGLE_FEE     
+}
+
+enum ParticipantType {
+  TEAM
+  PLAYER
+}
 model Competition {
-  id                BigInt @id @default(autoincrement())
-  name              String
-  type              CompetitionType @relation(fields: [typeId], references: [id])
-  typeId            BigInt
-  start_date         DateTime
-  end_date           DateTime
-  venue_name         String
-  venue_address      String
-  venue_city         String
-  organization      OrganizationProfile @relation(fields: [organization_id], references: [id])
-  organization_id    BigInt
-  approval_status    ApprovalStatus @default(PENDING)
-  price             Float @default(0)
+  id                  BigInt @id @default(autoincrement())
+  name                String
+  type                CompetitionType @relation(fields: [typeId], references: [id])
+  typeId              BigInt
+  start_date          DateTime
+  end_date            DateTime
+  venue_name          String
+  venue_address       String
+  venue_city          String
+  organization        OrganizationProfile @relation(fields: [organization_id], references: [id])
+  organization_id     BigInt
+  approval_status     ApprovalStatus @default(PENDING)
+  fee_type            FeeType
+  fee_amount          Float?
+  is_fee_per_person   Boolean? @default(false)   
   winner_participant_id BigInt?  
-  min_age Int
-  max_age Int
-  max_teams Int?
-  eliminationType EliminationType @default(SINGLE_ELIMINATION)
-  created_at         DateTime @default(now())
-  participants      Participant[]
-  matches           Match[]
-  groups            CompetitionGroup[]
-  multimedia   Multimedia[]
+  min_age             Int
+  max_age             Int
+  max_teams           Int?
+  eliminationType     EliminationType @default(SINGLE_ELIMINATION)
+  created_at          DateTime @default(now())
+  participants        Participant[]
+  matches             Match[]
+  groups              CompetitionGroup[]
+  multimedia          Multimedia[]
 }
 
 model Participant {
@@ -271,9 +306,10 @@ model Participant {
   team_id       BigInt?
   player_id     BigInt?
   registered_at DateTime @default(now())
+  confirmed_at   DateTime? 
   qrCode       String?
   payment_required Float?
-
+  status ApprovalStatus @default(PENDING)
   team_participation TeamParticipantPayment[] @relation("ParticipantToMembers")
   group_memberships  GroupMembership[]
   match_as_participant1 Match[] @relation("MatchParticipant1")
@@ -294,9 +330,7 @@ model TeamParticipantPayment {
   teamMember   TeamMember @relation(fields: [team_id, player_id], references: [teamId, playerId])
 
   fee_share     Float
-  is_paid       Boolean @default(false)
-  due_date      DateTime?
-  
+  is_paid       Boolean @default(false)  
   payments     Payment[]
 }
 
@@ -367,10 +401,11 @@ model Payment {
 
   amount                    Float
   currency                  String? @default("EGP")
-  payment_date               DateTime @default(now())
+  method                    String?
+  created_at               DateTime @default(now())
   due_date                   DateTime?
   status                    PaymentStatus @default(PENDING)
-  provider_info              Json?
+  payment_info                 Json?
 }
 
 // ===============================
