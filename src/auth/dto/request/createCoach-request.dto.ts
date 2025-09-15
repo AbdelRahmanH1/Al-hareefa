@@ -1,6 +1,6 @@
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
-export class CreateCoachProfileDto {
+export class CreateCoachProfileRequestDto {
   @IsOptional()
   @IsString()
   @MinLength(10, { message: 'Bio must be at least 10 characters long' })

@@ -3,16 +3,14 @@ import {
   IsEnum,
   ValidateNested,
   IsOptional,
-  IsDateString,
   IsArray,
-  IsNumber,
   ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { GameType } from '@prisma/client';
-import { CreateGuardianDto } from './CreateGuardian.dto';
+import { CreateGuardianRequestDto } from './CreateGuardian-request.dto';
 
-export class CreatePlayerProfileDto {
+export class CreatePlayerProfileRequestDto {
   @IsString()
   city: string;
 
@@ -23,6 +21,6 @@ export class CreatePlayerProfileDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateGuardianDto)
-  guardianId?: CreateGuardianDto;
+  @Type(() => CreateGuardianRequestDto)
+  guardianId?: CreateGuardianRequestDto;
 }

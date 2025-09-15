@@ -7,7 +7,7 @@ import {
 } from 'class-validator';
 import { Relation } from '@prisma/client';
 
-export class CreateGuardianDto {
+export class CreateGuardianRequestDto {
   @IsString()
   @MinLength(3, { message: 'Full name must be at least 3 character long' })
   @MaxLength(30, { message: 'Full name must be exceed 30 character' })

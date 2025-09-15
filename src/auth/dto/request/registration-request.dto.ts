@@ -9,12 +9,13 @@ import {
   IsEmpty,
   Length,
 } from 'class-validator';
-import { CreatePlayerProfileDto } from './CreatePlayer.dto';
-import { CreateCoachProfileDto } from './createCoach.dto';
-import { CreateOrganizationProfileDto } from './CreateOrganization.dto';
-import { UserRole, Gender } from '@prisma/client';
 
-export class RegisterUserDto {
+import { UserRole, Gender } from '@prisma/client';
+import { CreatePlayerProfileRequestDto } from './CreatePlayer-request.dto';
+import { CreateCoachProfileRequestDto } from './createCoach-request.dto';
+import { CreateOrganizationProfileRequestDto } from './CreateOrganization-request.dto';
+
+export class RegisterUserRequestDto {
   @IsString()
   firebaseUid: string;
 
@@ -45,7 +46,7 @@ export class RegisterUserDto {
   @ValidateNested()
   @Type(() => Object)
   profile:
-    | CreatePlayerProfileDto
-    | CreateCoachProfileDto
-    | CreateOrganizationProfileDto;
+    | CreatePlayerProfileRequestDto
+    | CreateCoachProfileRequestDto
+    | CreateOrganizationProfileRequestDto;
 }
