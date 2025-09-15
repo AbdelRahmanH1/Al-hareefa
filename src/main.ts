@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
-import { WrapResponseInterceptor } from './shared/interceptors/wrap-response.interceptor';
 import { ValidationPipe } from '@nestjs/common';
+import { setupSwagger } from './config/swagger.config';
 
 async function bootstrap() {
   (BigInt.prototype as any).toJSON = function () {
@@ -18,7 +18,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-  //app.useGlobalInterceptors(new WrapResponseInterceptor());
+  setupSwagger(app);
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
