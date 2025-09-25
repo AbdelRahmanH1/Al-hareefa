@@ -242,7 +242,6 @@ model TeamMember {
   team         Team @relation(fields: [teamId], references: [id])
   player       PlayerProfile @relation(fields: [playerId], references: [id])
   @@id([teamId, playerId])
-  teamPayments TeamParticipantPayment[]
 }
 
 // ===============================
@@ -262,7 +261,6 @@ model CompetitionType {
 
 enum FeeType {
   SINGLE             
-  TEAM_SHARED_FEE     
   TEAM_SINGLE_FEE     
 }
 
@@ -310,7 +308,6 @@ model Participant {
   qrCode       String?
   payment_required Float?
   status ApprovalStatus @default(PENDING)
-  team_participation TeamParticipantPayment[] @relation("ParticipantToMembers")
   group_memberships  GroupMembership[]
   match_as_participant1 Match[] @relation("MatchParticipant1")
   match_as_participant2 Match[] @relation("MatchParticipant2")
@@ -320,19 +317,7 @@ model Participant {
   @@unique([competition_id, player_id])
 }
 
-model TeamParticipantPayment {
-  id           BigInt @id @default(autoincrement())
-  participant  Participant @relation("ParticipantToMembers", fields: [participant_id], references: [id])
-  participant_id BigInt
 
-  team_id       BigInt
-  player_id     BigInt
-  teamMember   TeamMember @relation(fields: [team_id, player_id], references: [teamId, playerId])
-
-  fee_share     Float
-  is_paid       Boolean @default(false)  
-  payments     Payment[]
-}
 
 // ===============================
 // Competition Groups
@@ -390,8 +375,6 @@ model Payment {
   participant_id             BigInt?
   participant               Participant? @relation(fields: [participant_id], references: [id])
 
-  team_participant_paymentId  BigInt?
-  teamParticipantPayment    TeamParticipantPayment? @relation(fields: [team_participant_paymentId], references: [id])
 
   bookingId                 BigInt?
   booking                   PlayerBooking? @relation(fields: [bookingId], references: [id])
