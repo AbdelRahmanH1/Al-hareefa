@@ -10,7 +10,6 @@ import {
   FeeType,
   GameType,
 } from '@prisma/client';
-import { UpdateCompetitionRequestDto } from './dto/request/UpdateCompetition-request.dto';
 import { GetCompetitionsFilterDto } from './dto/request/GetCompetitionsFilter.dto';
 import { PaginatedDataDto } from 'src/shared/dto/PaginatedData.dto';
 import { getCompetitionStatus } from 'src/shared/helpers/competition-status.util';
@@ -48,11 +47,13 @@ export class CompetitionsService {
       throw new BadRequestException('Start date cannot be in the past');
     }
 
+    const hasGroupStage = data.eliminationType == 'KNOCKOUT' ? true : false;
+
     const isSoloGame =
       compType.min_player_per_team === 1 && compType.max_player_per_team === 1;
 
     const feeType: FeeType =
-      data.fee_type ?? (isSoloGame ? 'SINGLE' : 'TEAM_SHARED_FEE');
+      data.fee_type ?? (isSoloGame ? 'SINGLE' : 'TEAM_SINGLE_FEE');
 
     if (isSoloGame && feeType !== 'SINGLE') {
       throw new BadRequestException(
@@ -79,6 +80,7 @@ export class CompetitionsService {
         max_age: data.max_age ?? 35,
         max_teams: data.max_teams ?? null,
         eliminationType: data.eliminationType ?? 'SINGLE_ELIMINATION',
+        hasGroupStage: hasGroupStage,
         is_fee_per_person: data.is_fee_per_person ?? false,
         approval_status: 'PENDING',
         organization_id: organizer_id,
