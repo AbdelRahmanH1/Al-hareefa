@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Patch,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { CompetitionService } from './admin-competition.service';
@@ -14,13 +15,26 @@ import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { UpdateCompetitionStatusDto } from './dto/request/UpdateCompeitionStatus.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CompetitionResponseDto } from './dto/response/Competition-response.dto';
+import {
+  PaginatedCompetitionResponseDto,
+  SingleCompetitionResponseDto,
+} from 'src/modules/auth/dto/response/PaginatedCompetitionResponse.dto';
 
+@ApiTags('Admin - Competitions')
 @Controller('admin/competition')
 export class CompetitionController {
   constructor(private readonly service: CompetitionService) {}
 
   @Get()
   @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ADMIN))
+  @ApiOperation({ summary: 'List competitions by approval status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Competitions fetched successfully',
+    type: PaginatedCompetitionResponseDto,
+  })
   async getCompetition(
     @Query('status') status: ApprovalStatus = ApprovalStatus.PENDING,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 10,
@@ -31,6 +45,12 @@ export class CompetitionController {
 
   @Patch(':id/status')
   @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ADMIN))
+  @ApiOperation({ summary: 'Update competition approval status' })
+  @ApiResponse({
+    status: 200,
+    description: 'update status successfully',
+    type: SingleCompetitionResponseDto,
+  })
   async updateCompetitionStatus(
     @Param('id', ParseBigIntPipe) id: bigint,
     @Body() data: UpdateCompetitionStatusDto,

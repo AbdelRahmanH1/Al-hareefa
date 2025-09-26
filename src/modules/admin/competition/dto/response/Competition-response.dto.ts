@@ -1,25 +1,33 @@
 import { Expose } from 'class-transformer';
 import { ApprovalStatus, EliminationType } from '@prisma/client';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CompetitionResponseDto {
+  @ApiProperty()
   @Expose()
   id: bigint;
 
+  @ApiProperty()
   @Expose()
   name: string;
 
+  @ApiProperty()
   @Expose()
   typeId: bigint;
 
+  @ApiProperty()
   @Expose()
   organization_id: bigint;
 
+  @ApiProperty()
   @Expose()
   organization_name: string;
 
+  @ApiProperty()
   @Expose()
   approval_status: ApprovalStatus;
 
+  @ApiProperty()
   @Expose()
   price: number;
 
