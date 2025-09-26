@@ -77,7 +77,6 @@ enum GameType {
 
 enum EliminationType {
   SINGLE_ELIMINATION
-  DOUBLE_ELIMINATION
   KNOCKOUT
 }
 
@@ -93,6 +92,9 @@ enum TeamMemberRole {
   PLAYER
   CAPTAIN
 }
+
+
+
 
 // ===============================
 // Users
@@ -288,6 +290,7 @@ model Competition {
   min_age             Int
   max_age             Int
   max_teams           Int?
+  hasGroupStage    Boolean @default(false)
   eliminationType     EliminationType @default(SINGLE_ELIMINATION)
   created_at          DateTime @default(now())
   participants        Participant[]
@@ -326,7 +329,7 @@ model CompetitionGroup {
   id           BigInt @id @default(autoincrement())
   competition  Competition @relation(fields: [competition_id], references: [id])
   competition_id BigInt
-  name         String?
+  name         String
   members      GroupMembership[]
   matches Match[]
 }
@@ -361,8 +364,9 @@ model Match {
   participant1_id      BigInt
   participant2        Participant @relation("MatchParticipant2", fields: [participant2_id], references: [id])
   participant2_id      BigInt
-  scores              Json
-  winner_participant_id BigInt? 
+  score_participant1    Int? @default(0)
+  score_participant2    Int? @default(0)
+  winner_participant_id BigInt?
   createdAt           DateTime @default(now())
 }
 
