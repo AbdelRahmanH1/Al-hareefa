@@ -1,4 +1,11 @@
-import { Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ParticipantsService } from './participants.service';
 import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
@@ -18,5 +25,24 @@ export class ParticipantsController {
     @Param('id', ParseBigIntPipe) competitionId: bigint,
   ) {
     return this.service.registerPlayer(req.user.userId, competitionId);
+  }
+
+  @Post('register-team/:teamId')
+  @UseGuards(AuthorizationGuard(UserRole.COACH, UserRole.PLAYER))
+  async joinTeamCompetition(
+    @Req() req: { user: UserPayload },
+    @Param('id', ParseBigIntPipe) competitionId: bigint,
+    @Param('teamId', ParseBigIntPipe) teamId: bigint,
+  ) {
+    return this.service.registerTeam(req.user.userId, teamId, competitionId);
+  }
+
+  @Delete('/unregister')
+  @UseGuards(AuthorizationGuard(UserRole.PLAYER, UserRole.COACH))
+  async leaveCompetition(
+    @Req() req: { user: UserPayload },
+    @Param('id', ParseBigIntPipe) competitionId: bigint,
+  ) {
+    return this.service.cancelParticipation(competitionId, req.user.userId);
   }
 }
