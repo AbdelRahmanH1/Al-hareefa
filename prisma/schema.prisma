@@ -311,6 +311,7 @@ model Participant {
   qrCode       String?
   payment_required Float?
   status ApprovalStatus @default(PENDING)
+  wonMatches Match[] @relation("MatchWinner")
   group_memberships  GroupMembership[]
   match_as_participant1 Match[] @relation("MatchParticipant1")
   match_as_participant2 Match[] @relation("MatchParticipant2")
@@ -349,26 +350,45 @@ model GroupMembership {
 // Matches
 // ===============================
 model Match {
-  id                  BigInt @id @default(autoincrement())
-  competition         Competition @relation(fields: [competition_id], references: [id])
-  competition_id       BigInt
+  id           BigInt @id @default(autoincrement())
+  
+  competition_id BigInt
+  competition    Competition @relation(fields: [competition_id], references: [id])
+
   group_id BigInt?
-  group CompetitionGroup?@relation(fields: [group_id],references: [id])
-  stage               String?
-  status              MatchStatus @default(SCHEDULED)
-  scheduled_at         DateTime?
-  venue_name           String
-  venue_address        String
-  venue_city           String
-  participant1        Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id])
-  participant1_id      BigInt
-  participant2        Participant @relation("MatchParticipant2", fields: [participant2_id], references: [id])
-  participant2_id      BigInt
-  score_participant1    Int? @default(0)
-  score_participant2    Int? @default(0)
+  group    CompetitionGroup? @relation(fields: [group_id], references: [id])
+
+  stage   MatchStage?
+  status  MatchStatus @default(SCHEDULED)
+
+  scheduled_at  DateTime?
+  venue_name    String?
+  venue_address String?
+  venue_city    String?
+
+  round          Int?
+  next_match_id  BigInt?
+  next_match_slot Int?
+
+  participant1_id BigInt
+  participant1    Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id])
+
+  participant2_id BigInt
+  participant2    Participant @relation("MatchParticipant2", fields: [participant2_id], references: [id])
+
+  score_participant1 Int? @default(0)
+  score_participant2 Int? @default(0)
+
   winner_participant_id BigInt?
-  createdAt           DateTime @default(now())
+  winner Participant? @relation("MatchWinner", fields: [winner_participant_id], references: [id])
+
+  nextMatch      Match?   @relation("NextMatch", fields: [next_match_id], references: [id])
+  previousMatches Match[] @relation("NextMatch")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 
 // ===============================
 // Payments
