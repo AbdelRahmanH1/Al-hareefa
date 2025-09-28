@@ -4,10 +4,12 @@ import { CompetitionsController } from './competitions.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ParticipantsService } from './participants/participants.service';
 import { ParticipantsController } from './participants/participants.controller';
+import { GroupsController } from './groups/groups.controller';
+import { GroupsService } from './groups/groups.service';
 
 @Module({
   imports: [PrismaModule],
-  providers: [CompetitionsService, ParticipantsService],
-  controllers: [CompetitionsController, ParticipantsController],
+  providers: [CompetitionsService, ParticipantsService, GroupsService],
+  controllers: [CompetitionsController, ParticipantsController, GroupsController],
 })
 export class CompetitionsModule {}

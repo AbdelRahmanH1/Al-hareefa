@@ -4,8 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
-  Patch,
   Post,
   Query,
   Req,
@@ -16,7 +14,6 @@ import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 import { CreateCompetitionRequestDto } from './dto/request/CreateCompetition-request.dto';
 import { UserRole } from '@prisma/client';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
-import { UpdateCompetitionRequestDto } from './dto/request/UpdateCompetition-request.dto';
 import { GetCompetitionsFilterDto } from './dto/request/GetCompetitionsFilter.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
