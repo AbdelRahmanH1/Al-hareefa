@@ -142,6 +142,8 @@ model PlayerProfile {
   created_at     DateTime @default(now())
   bookings      PlayerBooking[]
   team_memberships TeamMember[]
+  participants Participant[]
+
 }
 
 model Guardian {
@@ -211,6 +213,8 @@ model Team {
   members     TeamMember[]
   multimedia   Multimedia[]
   team_invites TeamInvite[]
+  participants Participant[]
+
 }
 
 model TeamInvite {
@@ -304,8 +308,11 @@ model Participant {
   competition  Competition @relation(fields: [competition_id], references: [id])
   competition_id BigInt
   type         ParticipantType
+  team        Team? @relation(fields: [team_id], references: [id])
   team_id       BigInt?
-  player_id     BigInt?
+
+  player       PlayerProfile? @relation(fields: [player_id], references: [id]) // 👈 ADD THIS
+player_id     BigInt?
   registered_at DateTime @default(now())
   confirmed_at   DateTime? 
   qrCode       String?
