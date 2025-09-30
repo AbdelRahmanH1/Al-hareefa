@@ -6,14 +6,21 @@ import { GroupsService } from './groups.service';
 import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { CreateGroupManualDto } from './dto/request/CreateGroupManual.dto';
+import { GenerateGroupsDto } from './dto/request/GenerateGroups.dto';
 
 @Controller('competitions/:competitionId/groups')
 @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ORGANIZATION))
 export class GroupsController {
   constructor(private readonly service: GroupsService) {}
 
-  @Post()
-  async createGroupAuto() {}
+  @Post('auto')
+  async createGroupAuto(
+    @Param('competitionId', ParseBigIntPipe) competitionId: bigint,
+    @Req() req: { user: UserPayload },
+    dto: GenerateGroupsDto,
+  ) {
+    return this.service.generateGroups(competitionId, req.user.userId, dto);
+  }
 
   @Post('manual')
   async createGroupManual(
@@ -29,5 +36,9 @@ export class GroupsController {
   }
 
   @Get()
-  async getGroups() {}
+  async getGroups(
+    @Param('competitionId', ParseBigIntPipe) competitionId: bigint,
+  ) {
+    return this.service.getCompetitionGroups(competitionId);
+  }
 }

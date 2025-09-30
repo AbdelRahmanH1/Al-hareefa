@@ -6,10 +6,14 @@ import { ParticipantsService } from './participants/participants.service';
 import { ParticipantsController } from './participants/participants.controller';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
+import { StageService } from './stage/stage.service';
+import { StageController } from './stage/stage.controller';
+import { MatchesController } from './matches/matches.controller';
+import { MatchesService } from './matches/matches.service';
 
 @Module({
   imports: [PrismaModule],
-  providers: [CompetitionsService, ParticipantsService, GroupsService],
-  controllers: [CompetitionsController, ParticipantsController, GroupsController],
+  providers: [CompetitionsService, ParticipantsService, GroupsService, StageService, MatchesService],
+  controllers: [CompetitionsController, ParticipantsController, GroupsController, StageController, MatchesController],
 })
 export class CompetitionsModule {}

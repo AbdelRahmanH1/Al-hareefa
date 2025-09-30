@@ -1,4 +1,4 @@
-import { EliminationType, FeeType } from '@prisma/client';
+import { EliminationType, FeeType, MatchStage } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDate,
@@ -40,6 +40,9 @@ export class CreateCompetitionRequestDto {
     message: 'Venue address must be between 5 and 200 characters',
   })
   venue_address: string;
+
+  @IsEnum(MatchStage, { message: 'stage must be a valid MatchStage' })
+  stage: MatchStage;
 
   @IsString()
   @Length(2, 50, { message: 'Venue city must be between 2 and 50 characters' })

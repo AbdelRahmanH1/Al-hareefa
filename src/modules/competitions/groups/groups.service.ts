@@ -5,6 +5,7 @@ import { ResponseDto } from 'src/shared/dto/response.dto';
 import { plainToInstance } from 'class-transformer';
 import { GroupResponseDto } from './dto/response/GroupResponse.dto';
 import { GenerateGroupsDto } from './dto/request/GenerateGroups.dto';
+import { GroupParticipantDto } from './dto/response/GroupParticipantResponse.dto';
 
 @Injectable()
 export class GroupsService {
@@ -72,7 +73,9 @@ export class GroupsService {
     };
   }
 
-  async getCompetitionGroups(competitionId: bigint) {
+  async getCompetitionGroups(
+    competitionId: bigint,
+  ): Promise<ResponseDto<GroupResponseDto[]>> {
     const competition = await this.prisma.competition.findUnique({
       where: { id: competitionId, approval_status: 'ACCEPTED' },
     });
@@ -89,6 +92,7 @@ export class GroupsService {
                 player: {
                   include: { user: true },
                 },
+                standing: true,
               },
             },
           },
@@ -96,9 +100,29 @@ export class GroupsService {
       },
     });
 
-    const response = plainToInstance(GroupResponseDto, groups, {
-      excludeExtraneousValues: true,
-    });
+    const mappedGroups = groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      competitionId: g.competition_id,
+      members: g.members.map((m) => {
+        const s = m.participant.standing[0];
+        return {
+          id: m.participant.id,
+          type: m.participant.team ? 'TEAM' : 'PLAYER',
+          name:
+            m.participant.team?.name ||
+            m.participant.player?.user.full_name ||
+            '',
+          points: s?.points ?? 0,
+          wins: s?.wins ?? 0,
+          losses: s?.losses ?? 0,
+        } as GroupParticipantDto;
+      }),
+    }));
+
+    const response = mappedGroups.map((g) =>
+      plainToInstance(GroupResponseDto, g, { excludeExtraneousValues: true }),
+    );
 
     return {
       success: true,
@@ -112,7 +136,6 @@ export class GroupsService {
     userId: bigint,
     dto: GenerateGroupsDto,
   ): Promise<ResponseDto<GroupResponseDto[]>> {
-    // check groups already exist or not
     const existingGroups = await this.prisma.competitionGroup.findMany({
       where: { competition_id: competitionid },
     });
@@ -142,10 +165,8 @@ export class GroupsService {
       );
     }
 
-    // shuffle participants
     const shuffled = [...participants].sort(() => Math.random() - 0.5);
 
-    // create groups and assign participants
     let index = 0;
     for (let i = 1; i <= dto.numberOfGroups; i++) {
       const group = await this.prisma.competitionGroup.create({
@@ -154,6 +175,9 @@ export class GroupsService {
           competition_id: competitionid,
         },
       });
+
+      const groupMembers: { id: bigint }[] = [];
+
       for (
         let j = 0;
         j < dto.participantsPerGroup && index < shuffled.length;
@@ -166,8 +190,26 @@ export class GroupsService {
             participant_id: participant.id,
           },
         });
+        groupMembers.push({ id: participant.id });
+      }
+
+      // Generate round robin matches for this group
+      for (let x = 0; x < groupMembers.length; x++) {
+        for (let y = x + 1; y < groupMembers.length; y++) {
+          await this.prisma.match.create({
+            data: {
+              competition_id: competitionid,
+              group_id: group.id,
+              participant1_id: groupMembers[x].id,
+              participant2_id: groupMembers[y].id,
+              stage: 'GROUP_STAGE',
+              status: 'SCHEDULED',
+            },
+          });
+        }
       }
     }
+
     const groups = await this.prisma.competitionGroup.findMany({
       where: { competition_id: competitionid },
       include: {
@@ -176,11 +218,12 @@ export class GroupsService {
             participant: {
               include: {
                 team: true,
-                player: true,
+                player: { include: { user: true } },
               },
             },
           },
         },
+        matches: true,
       },
     });
 
@@ -189,7 +232,7 @@ export class GroupsService {
     });
     return {
       success: true,
-      message: 'Groups generated successfully',
+      message: 'Groups and matches generated successfully',
       data: response,
     };
   }
