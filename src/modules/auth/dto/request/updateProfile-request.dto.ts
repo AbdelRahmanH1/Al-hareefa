@@ -110,7 +110,7 @@ class UpdateOrganizationProfileRequestDto {
   @IsString()
   @MinLength(3, { message: 'Organization name must be at least 3 characters' })
   @MaxLength(50, { message: 'Organization name cannot exceed 50 characters' })
-  organization_name?: string;
+  owner_name?: string;
 
   @ApiProperty({
     description: 'Organization type',

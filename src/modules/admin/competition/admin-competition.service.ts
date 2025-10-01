@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ApprovalStatus } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CompetitionResponseDto } from './dto/response/Competition-response.dto';
+import { CompetitionResponseAdminDto } from './dto/response/Competition-response.dto';
 import { UpdateCompetitionStatusDto } from './dto/request/UpdateCompeitionStatus.dto';
 import { ResponseDto } from 'src/shared/dto/response.dto';
 
@@ -14,7 +14,7 @@ export class CompetitionService {
     status?: string,
     page = 1,
     limit = 10,
-  ): Promise<ResponseDto<CompetitionResponseDto[]>> {
+  ): Promise<ResponseDto<CompetitionResponseAdminDto[]>> {
     const skip = (page - 1) * limit;
     const normalizedStatus =
       status &&
@@ -39,11 +39,12 @@ export class CompetitionService {
     });
 
     const dto = plainToInstance(
-      CompetitionResponseDto,
+      CompetitionResponseAdminDto,
       competitions.map((comp) => ({
         ...comp,
         organization_name: comp.organization.user.full_name,
       })),
+      { excludeExtraneousValues: true },
     );
 
     return {
@@ -56,7 +57,7 @@ export class CompetitionService {
   async updateCompetitionStatus(
     id: bigint,
     body: UpdateCompetitionStatusDto,
-  ): Promise<ResponseDto<CompetitionResponseDto>> {
+  ): Promise<ResponseDto<CompetitionResponseAdminDto>> {
     const competitions = await this.prisma.competition.findFirst({
       where: { id, approval_status: ApprovalStatus.PENDING },
       include: {
@@ -80,7 +81,7 @@ export class CompetitionService {
       },
     });
     const dto = plainToInstance(
-      CompetitionResponseDto,
+      CompetitionResponseAdminDto,
       {
         ...updatedCom,
         organization_name: updatedCom.organization.user.full_name,

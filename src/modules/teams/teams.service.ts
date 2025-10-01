@@ -67,7 +67,7 @@ export class TeamsService {
       throw new BadRequestException('No data provided to update');
 
     const team = await this.prisma.team.findUnique({
-      where: { id: teamId },
+      where: { id: teamId, is_deleted: false },
     });
     if (!team) throw new NotFoundException('Team not found');
 
@@ -98,7 +98,7 @@ export class TeamsService {
 
   async softDeleteTeam(teamId: bigint, userId: bigint) {
     const team = await this.prisma.team.findUnique({
-      where: { id: teamId },
+      where: { id: teamId, is_deleted: false },
       include: {
         members: true,
       },

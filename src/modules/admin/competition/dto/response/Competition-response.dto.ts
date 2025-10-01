@@ -2,7 +2,7 @@ import { Expose } from 'class-transformer';
 import { ApprovalStatus, EliminationType } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CompetitionResponseDto {
+export class CompetitionResponseAdminDto {
   @ApiProperty()
   @Expose()
   id: bigint;
@@ -31,33 +31,43 @@ export class CompetitionResponseDto {
   @Expose()
   price: number;
 
+  @ApiProperty()
   @Expose()
   min_age: number;
 
+  @ApiProperty()
   @Expose()
   max_age: number;
 
+  @ApiProperty()
   @Expose()
   max_teams: number | null;
 
+  @ApiProperty()
   @Expose()
   eliminationType: EliminationType;
 
+  @ApiProperty()
   @Expose()
   start_date: Date;
 
+  @ApiProperty()
   @Expose()
   end_date: Date;
 
+  @ApiProperty()
   @Expose()
   venue_name: string;
 
+  @ApiProperty()
   @Expose()
   venue_address: string;
 
+  @ApiProperty()
   @Expose()
   venue_city: string;
 
+  @ApiProperty()
   @Expose()
   created_at: Date;
 }

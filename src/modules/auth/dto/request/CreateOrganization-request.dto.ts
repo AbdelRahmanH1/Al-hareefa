@@ -12,7 +12,7 @@ export class CreateOrganizationProfileRequestDto {
   @IsString()
   @MinLength(3, { message: 'Organizer name must be at least 3 character long' })
   @MaxLength(50, { message: 'Organizer name must be exceed 30 character' })
-  ownerName: string;
+  owner_name: string;
 
   @IsEnum(OrganizationType)
   type: OrganizationType;

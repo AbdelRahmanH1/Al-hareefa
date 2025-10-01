@@ -134,7 +134,7 @@ model User {
 // ===============================
 model PlayerProfile {
   id            BigInt   @id
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id],onDelete: Cascade)
   userId        BigInt   @unique
   preferred_games GameType[]
   guardianId    BigInt?
@@ -161,7 +161,7 @@ model Guardian {
 // ===============================
 model CoachProfile {
   id          BigInt @id
-  user        User   @relation(fields: [user_id], references: [id])
+  user        User   @relation(fields: [user_id], references: [id],onDelete: Cascade)
   user_id      BigInt @unique
   bio         String?
   experience  String?
@@ -245,8 +245,8 @@ model TeamMember {
   roleInTeam   TeamMemberRole @default(PLAYER)
   invitedAt    DateTime @default(now())
   respondedAt  DateTime?
-  team         Team @relation(fields: [teamId], references: [id])
-  player       PlayerProfile @relation(fields: [playerId], references: [id])
+  team         Team @relation(fields: [teamId], references: [id],onDelete: Cascade)
+  player       PlayerProfile @relation(fields: [playerId], references: [id],onDelete: Cascade)
   @@id([teamId, playerId])
 }
 
@@ -284,7 +284,7 @@ model Competition {
   venue_name          String
   venue_address       String
   venue_city          String
-  organization        OrganizationProfile @relation(fields: [organization_id], references: [id])
+  organization        OrganizationProfile @relation(fields: [organization_id], references: [id],onDelete: Cascade)
   organization_id     BigInt
   approval_status     ApprovalStatus @default(PENDING)
   fee_type            FeeType
@@ -305,12 +305,12 @@ model Competition {
 
 model Participant {
   id           BigInt @id @default(autoincrement())
-  competition  Competition @relation(fields: [competition_id], references: [id])
+  competition  Competition @relation(fields: [competition_id], references: [id],onDelete: Cascade)
   competition_id BigInt
   type         ParticipantType
   team        Team? @relation(fields: [team_id], references: [id])
   team_id       BigInt?
-  player       PlayerProfile? @relation(fields: [player_id], references: [id]) // 👈 ADD THIS
+  player       PlayerProfile? @relation(fields: [player_id], references: [id]) 
   player_id     BigInt?
   registered_at DateTime @default(now())
   confirmed_at   DateTime? 
@@ -363,10 +363,10 @@ model Match {
   id           BigInt @id @default(autoincrement())
   
   competition_id BigInt
-  competition    Competition @relation(fields: [competition_id], references: [id])
+  competition    Competition @relation(fields: [competition_id], references: [id],onDelete: Cascade)
 
   group_id BigInt?
-  group    CompetitionGroup? @relation(fields: [group_id], references: [id])
+  group    CompetitionGroup? @relation(fields: [group_id], references: [id],onDelete: SetNull)
 
   stage   MatchStage?
   status  MatchStatus @default(SCHEDULED)
@@ -381,19 +381,19 @@ model Match {
   next_match_slot Int?
 
   participant1_id BigInt
-  participant1    Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id])
+  participant1    Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id],onDelete: Cascade)
 
   participant2_id BigInt?
-  participant2    Participant? @relation("MatchParticipant2", fields: [participant2_id], references: [id])
+  participant2    Participant? @relation("MatchParticipant2", fields: [participant2_id], references: [id],onDelete: SetNull)
 
 
   score_participant1 Int? @default(0)
   score_participant2 Int? @default(0)
 
   winner_participant_id BigInt?
-  winner Participant? @relation("MatchWinner", fields: [winner_participant_id], references: [id])
+  winner Participant? @relation("MatchWinner", fields: [winner_participant_id], references: [id],onDelete: SetNull)
 
-  nextMatch      Match?   @relation("NextMatch", fields: [next_match_id], references: [id])
+  nextMatch      Match?   @relation("NextMatch", fields: [next_match_id], references: [id],onDelete: SetNull)
   previousMatches Match[] @relation("NextMatch")
 
   createdAt DateTime @default(now())

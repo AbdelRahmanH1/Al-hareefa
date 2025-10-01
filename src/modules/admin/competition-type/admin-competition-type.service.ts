@@ -100,7 +100,6 @@ export class CompetitionTypeService {
     };
   }
 
-  // support function
   async competition_option() {
     const gameTypes = Object.values(GameType);
     return { success: true, message: 'Game options', data: { gameTypes } };

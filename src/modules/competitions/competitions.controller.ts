@@ -17,12 +17,19 @@ import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { GetCompetitionsFilterDto } from './dto/request/GetCompetitionsFilter.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiResponseDto } from 'src/shared/dto/ApiResponse.dto';
+import { CompetitionResponseDto } from './dto/response/Competition-response.dto';
 
+@ApiTags('Competition')
+@ApiBearerAuth('bearerAuth')
 @Controller('competitions')
 @UseGuards(AuthenticationGuard)
 export class CompetitionsController {
   constructor(private readonly service: CompetitionsService) {}
 
+  @ApiOperation({ summary: 'create competition' })
+  @ApiResponseDto(CompetitionResponseDto)
   @Post()
   @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
   async create(
@@ -33,6 +40,7 @@ export class CompetitionsController {
   }
 
   /*  @Patch(':id')
+    @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
   async update(
     @Param('id', ParseBigIntPipe) eventId: bigint,
     @Req() req: { user: UserPayload },
@@ -57,10 +65,13 @@ export class CompetitionsController {
   }
 
   @Get('option')
+  @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
   async getCompetitionOption() {
     return this.service.getCompetitionOptions();
   }
+
   @Get(':id')
+  @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
   async getCompetitionById(@Param('id', ParseBigIntPipe) id: bigint) {
     return this.service.getCompetitionById(id);
   }

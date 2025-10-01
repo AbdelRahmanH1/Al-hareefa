@@ -27,30 +27,30 @@ export class AuthService {
   async registerDummy() {
     const user = await this.prisma.user.create({
       data: {
-        firebase_id: 'fake_firebase_uid_2920',
-        full_name: 'Org1',
-        email: 'admin1@example.com',
-        phone: '0223212129',
-        role: UserRole.ADMIN,
+        firebase_id: 'fake_firebase_uid_1006',
+        full_name: 'Player4',
+        email: 'player4@example.com',
+        phone: '0223113221',
+        role: UserRole.PLAYER,
         gender: Gender.MALE,
         city: 'Alexandria',
         birth_date: new Date('2020-01-01'),
       },
     });
 
-    /* const playerProfile = await this.prisma.playerProfile.create({
+    const playerProfile = await this.prisma.playerProfile.create({
       data: {
         preferred_games: { set: [GameType.FOOTBALL] },
         id: user.id,
         userId: user.id,
       },
-    }); */
+    });
 
     /* const adminProfile = await this.prisma.adminProfile.create({
       data: { user_id: user.id, id: user.id },
     }); */
 
-    /*    const OrganizationProfile = await this.prisma.organizationProfile.create({
+    /* const OrganizationProfile = await this.prisma.organizationProfile.create({
       data: {
         owner_name: 'Ahmed',
         id: user.id,
@@ -61,9 +61,9 @@ export class AuthService {
       },
     }); */
 
-    const coachProfile = await this.prisma.coachProfile.create({
+    /* const coachProfile = await this.prisma.coachProfile.create({
       data: { id: user.id, user_id: user.id },
-    });
+    }); */
     return user;
   }
   async loginDummy() {

@@ -16,11 +16,19 @@ import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { UpdateOrganizationStatusDto } from './dto/UpdateOrganizationStatus.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { PaginatedOrganizationsResponseDto } from './dto/PaginatedOrganizations-esponse.dto';
+import { ApiResponseDto } from 'src/shared/dto/ApiResponse.dto';
+import { OrganizationResponseDto } from './dto/OrganizationResponsedto';
 
+@ApiTags('Admin - organization ')
+@ApiBearerAuth('bearerAuth')
 @Controller('admin/organization')
 export class OrganizationController {
   constructor(private readonly service: OrganizationService) {}
 
+  @ApiOperation({ summary: 'get organization by status' })
+  @ApiResponseDto(PaginatedOrganizationsResponseDto)
   @Get()
   @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ADMIN))
   async getOrganizations(
@@ -32,6 +40,8 @@ export class OrganizationController {
   }
 
   @Patch(':id/status')
+  @ApiOperation({ summary: 'update organization status' })
+  @ApiResponseDto(OrganizationResponseDto)
   @UseGuards(AuthenticationGuard, AuthorizationGuard(UserRole.ADMIN))
   async updateOrganizationStatus(
     @Param('id', ParseBigIntPipe) id: bigint,

@@ -17,14 +17,14 @@ import { CreateOrganizationProfileRequestDto } from './CreateOrganization-reques
 
 export class RegisterUserRequestDto {
   @IsString()
-  firebaseUid: string;
+  firebase_id: string;
 
   @IsEmail()
   email: string;
 
   @IsString()
   @Length(3, 50)
-  fullName: string;
+  full_name: string;
 
   @IsPhoneNumber('EG')
   phone: string;

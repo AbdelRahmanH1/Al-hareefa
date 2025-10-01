@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CompetitionResponseDto } from 'src/modules/admin/competition/dto/response/Competition-response.dto';
+import { CompetitionResponseDto } from 'src/modules/competitions/dto/response/Competition-response.dto';
 import { PaginationMetaDto } from 'src/shared/dto/PaginationMeta.dto';
 
 export class PaginatedCompetitionResponseDto {

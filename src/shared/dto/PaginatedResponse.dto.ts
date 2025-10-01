@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { OrganizationResponseDto } from './OrganizationResponsedto';
 
-export class PaginatedOrganizationsResponseDto {
-  @ApiProperty({ type: [OrganizationResponseDto] })
-  @Type(() => OrganizationResponseDto)
+export class PaginatedResponseDto<T> {
+  @ApiProperty({ type: [Object], description: 'List of items' })
   @Expose()
-  items: OrganizationResponseDto[];
+  @Type(() => Object)
+  items: T[];
 
   @ApiProperty({
+    description: 'Pagination info',
     example: { page: 1, limit: 10, total: 50, totalPages: 5 },
   })
   @Expose()
