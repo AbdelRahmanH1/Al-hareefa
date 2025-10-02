@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { MatchStage } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
@@ -10,23 +11,28 @@ import {
 } from 'class-validator';
 
 export class UpadateMatchRequestDto {
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber({}, { message: 'participant1Id must be a number' })
   participant1Id: bigint;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber({}, { message: 'participant2Id must be a number' })
   participant2Id: bigint;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsEnum(MatchStage, { message: 'stage must be a valid MatchStage' })
   stage: MatchStage;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsDate()
   @Type(() => Date)
   scheduledAt?: Date;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @Length(3, 100, {
@@ -34,6 +40,7 @@ export class UpadateMatchRequestDto {
   })
   venueName?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @Length(5, 200, {
@@ -41,6 +48,7 @@ export class UpadateMatchRequestDto {
   })
   venueAddress?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @Length(2, 50, { message: 'Venue city must be between 2 and 50 characters' })

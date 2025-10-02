@@ -30,7 +30,7 @@ export class AuthService {
         firebase_id: 'fake_firebase_uid_1006',
         full_name: 'Player4',
         email: 'player4@example.com',
-        phone: '0223113221',
+        phone: '0213117251',
         role: UserRole.PLAYER,
         gender: Gender.MALE,
         city: 'Alexandria',
@@ -68,7 +68,7 @@ export class AuthService {
   }
   async loginDummy() {
     const user = await this.prisma.user.findUnique({
-      where: { email: 'org1@example.com' },
+      where: { email: 'player1@example.com' },
     });
 
     if (!user) throw new UnauthorizedException('User not found');

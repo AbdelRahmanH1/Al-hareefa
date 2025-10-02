@@ -13,7 +13,7 @@ import { MembershipsService } from './memberships.service';
 import { ParseBigIntPipe } from 'src/shared/pipes/parse-bigint.pipe';
 import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 
-import { GameType, UserRole } from '@prisma/client';
+import { GameType, User, UserRole } from '@prisma/client';
 import { JoinTeamDto } from './dto/request/JoinTeam.dto';
 import {
   ApiBearerAuth,
@@ -23,10 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { TeamInviteResponseDto } from './dto/response/TeamInvite-response.dto';
 import { TeamMemberWrapper } from './dto/response/TeamReponseWrapper.dto';
-import { TeamInviteQRResponseDto } from './dto/response/TeamInviteQr-response.dto';
-import { ResponseDto } from 'src/shared/dto/response.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
 
@@ -75,10 +72,13 @@ export class MembershipsController {
   async respondToInvite(
     @Req() req: { user: UserPayload },
     @Param('teamId', ParseBigIntPipe) teamId: bigint,
-    @Param('playerId', ParseBigIntPipe) playerId: bigint,
     @Body('accepted', ParseBoolPipe) accepted: boolean,
   ) {
-    return this.membershipsService.respondToInvite(teamId, playerId, accepted);
+    return this.membershipsService.respondToInvite(
+      teamId,
+      req.user.userId,
+      accepted,
+    );
   }
 
   @Delete(':teamId/:memberId')

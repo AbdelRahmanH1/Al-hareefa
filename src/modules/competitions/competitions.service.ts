@@ -22,24 +22,23 @@ export class CompetitionsService {
     organizer_id: bigint,
     data: CreateCompetitionRequestDto,
   ): Promise<ResponseDto<CompetitionResponseDto>> {
-    const organizer = await this.prisma.organizationProfile.findUnique({
-      where: { user_id: organizer_id },
+    // -------------------- Organizer Validation --------------------
+    const organizer = await this.prisma.organizationProfile.findFirst({
+      where: { user_id: organizer_id, approval_status: 'ACCEPTED' },
     });
-    if (!organizer || organizer.approval_status !== 'ACCEPTED') {
+    if (!organizer) {
       throw new BadRequestException('Organizer is not active or approved');
     }
 
+    // -------------------- Competition Name Validation --------------------
     const existing = await this.prisma.competition.findFirst({
       where: { name: data.name },
     });
-    if (existing)
+    if (existing) {
       throw new BadRequestException('Competition name already exists');
+    }
 
-    const compType = await this.prisma.competitionType.findUnique({
-      where: { id: data.typeId },
-    });
-    if (!compType) throw new BadRequestException('Invalid competition type');
-
+    // -------------------- Dates Validation --------------------
     if (data.end_date <= data.start_date) {
       throw new BadRequestException('End date must be after start date');
     }
@@ -47,24 +46,18 @@ export class CompetitionsService {
       throw new BadRequestException('Start date cannot be in the past');
     }
 
-    const hasGroupStage = data.eliminationType == 'KNOCKOUT' ? true : false;
-
-    const isSoloGame =
-      compType.min_player_per_team === 1 && compType.max_player_per_team === 1;
-
-    const feeType: FeeType =
-      data.fee_type ?? (isSoloGame ? 'SINGLE' : 'TEAM_SINGLE_FEE');
-
-    if (isSoloGame && feeType !== 'SINGLE') {
-      throw new BadRequestException(
-        'Fee type must be SINGLE for solo-player competitions',
-      );
-    } else if (!isSoloGame && feeType === 'SINGLE') {
-      throw new BadRequestException(
-        'Fee type cannot be SINGLE for team competitions',
-      );
+    // -------------------- Competition Type Validation --------------------
+    const compType = await this.prisma.competitionType.findUnique({
+      where: { id: data.typeId },
+    });
+    if (!compType) {
+      throw new BadRequestException('Invalid competition type');
     }
 
+    // -------------------- Fee Type Validation --------------------
+    const fee_type: FeeType =
+      data.fee_amount && data.fee_amount > 0 ? 'PAID' : 'FREE';
+    // -------------------- Competition Creation --------------------
     const competition = await this.prisma.competition.create({
       data: {
         name: data.name,
@@ -74,19 +67,19 @@ export class CompetitionsService {
         venue_name: data.venue_name,
         venue_address: data.venue_address,
         venue_city: data.venue_city,
-        fee_type: feeType,
+        fee_type: fee_type,
         fee_amount: data.fee_amount ?? null,
         min_age: data.min_age ?? 7,
         max_age: data.max_age ?? 35,
         max_teams: data.max_teams ?? null,
         eliminationType: data.eliminationType ?? 'SINGLE_ELIMINATION',
-        hasGroupStage: hasGroupStage,
-        is_fee_per_person: data.is_fee_per_person ?? false,
+        hasGroupStage: data.eliminationType === 'KNOCKOUT',
         approval_status: 'PENDING',
         organization_id: organizer_id,
       },
     });
 
+    // -------------------- Response --------------------
     return {
       success: true,
       message: 'Competition created successfully',

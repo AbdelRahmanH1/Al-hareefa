@@ -17,14 +17,17 @@ export function mapMatchToDto(
 ): AllMatchResponseDto {
   const { participant1: p1, participant2: p2 } = match;
   return {
-    id: match.id,
-    competitionId: match.competition_id,
+    id: match.id.toString(),
+    competitionId: match.competition_id.toString(),
     participant1: {
-      id: p1.id,
+      id: p1.id.toString(),
       name: p1.team?.name || p1.player?.user.full_name || '',
     },
     participant2: p2
-      ? { id: p2.id, name: p2.team?.name || p2.player?.user.full_name || '' }
+      ? {
+          id: p2.id.toString(),
+          name: p2.team?.name || p2.player?.user.full_name || '',
+        }
       : null,
     stage: match.stage,
     status: match.status,
@@ -34,6 +37,8 @@ export function mapMatchToDto(
     venueCity: match.venue_city,
     scoreParticipant1: match.score_participant1 ?? undefined,
     scoreParticipant2: match.score_participant2 ?? undefined,
-    winnerParticipantId: match.winner_participant_id ?? null,
+    winnerParticipantId: match.winner_participant_id
+      ? match.winner_participant_id.toString()
+      : null,
   };
 }

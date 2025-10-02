@@ -6,6 +6,7 @@ import { plainToInstance } from 'class-transformer';
 import { GroupResponseDto } from './dto/response/GroupResponse.dto';
 import { GenerateGroupsDto } from './dto/request/GenerateGroups.dto';
 import { GroupParticipantDto } from './dto/response/GroupParticipantResponse.dto';
+import { GroupResponsePlainDto } from './dto/response/GroupResponsePlain.dto';
 
 @Injectable()
 export class GroupsService {
@@ -107,7 +108,7 @@ export class GroupsService {
       members: g.members.map((m) => {
         const s = m.participant.standing[0];
         return {
-          id: m.participant.id,
+          id: m.participant.id.toString(),
           type: m.participant.team ? 'TEAM' : 'PLAYER',
           name:
             m.participant.team?.name ||
@@ -135,7 +136,7 @@ export class GroupsService {
     competitionid: bigint,
     userId: bigint,
     dto: GenerateGroupsDto,
-  ): Promise<ResponseDto<GroupResponseDto[]>> {
+  ): Promise<ResponseDto<GroupResponsePlainDto[]>> {
     const existingGroups = await this.prisma.competitionGroup.findMany({
       where: { competition_id: competitionid },
     });
@@ -224,12 +225,47 @@ export class GroupsService {
           },
         },
         matches: true,
+        standing: true,
       },
     });
 
-    const response = plainToInstance(GroupResponseDto, groups, {
+    const normalized = groups.map((g) => {
+      const memberMap = new Map<bigint, any>();
+      g.members.forEach((m) => {
+        if (m.participant_id) memberMap.set(m.participant_id, m.participant);
+      });
+
+      return {
+        id: g.id,
+        name: g.name,
+        competitionId: g.competition_id,
+        members: g.members.map((m) => ({
+          ...m.participant,
+          points: m.points,
+          wins: m.wins,
+          losses: m.losses,
+        })),
+        matches: g.matches.map((m) => ({
+          id: m.id,
+          participant1: m.participant1_id
+            ? memberMap.get(m.participant1_id)
+            : null,
+          participant2: m.participant2_id
+            ? memberMap.get(m.participant2_id)
+            : null,
+          status: m.status,
+          stage: m.stage,
+          score_participant1: m.score_participant1 ?? 0,
+          score_participant2: m.score_participant2 ?? 0,
+          scheduled_at: m.scheduled_at ?? null,
+        })),
+      };
+    });
+
+    const response = plainToInstance(GroupResponsePlainDto, normalized, {
       excludeExtraneousValues: true,
     });
+
     return {
       success: true,
       message: 'Groups and matches generated successfully',

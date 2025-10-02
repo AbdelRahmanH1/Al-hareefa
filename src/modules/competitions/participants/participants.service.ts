@@ -45,7 +45,10 @@ export class ParticipantsService {
     const competition =
       await this.validateCompetitionForRegistration(competitionId);
 
-    if (competition.type.min_player_per_team > 1) {
+    if (
+      competition.type.min_player_per_team > 1 ||
+      competition.type.max_player_per_team > 1
+    ) {
       throw new BadRequestException(
         'This competition requires a team, not individual players',
       );
@@ -194,35 +197,32 @@ export class ParticipantsService {
 
     if (isSoloCompetition(competition)) {
       participant = await this.prisma.participant.findFirst({
-        where: {
-          competition_id: competitionId,
-          player_id: userId,
-        },
+        where: { competition_id: competitionId, player_id: userId },
       });
     } else {
       const team = await this.prisma.team.findFirst({
         where: { created_by_id: userId },
       });
-
       if (!team) throw new NotFoundException('Team not found');
 
       participant = await this.prisma.participant.findFirst({
-        where: {
-          competition_id: competitionId,
-          team_id: team.id,
-        },
+        where: { competition_id: competitionId, team_id: team.id },
       });
     }
-    if (!participant) {
-      throw new NotFoundException('Participation not found');
-    }
 
-    if (!canCancelParticipation(participant, competition)) {
+    if (!participant) throw new NotFoundException('Participation not found');
+
+    const isPaid = competition.fee_type === 'PAID';
+    const cancellableStatuses = ['PENDING']; // extend if needed later
+
+    if (isPaid && !cancellableStatuses.includes(participant.status)) {
       throw new BadRequestException(
-        'Cannot cancel participation at this stage',
+        'Cannot cancel participation after payment',
       );
     }
+
     await this.prisma.participant.delete({ where: { id: participant.id } });
+
     return {
       success: true,
       message: 'Participation cancelled successfully',

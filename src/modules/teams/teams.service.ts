@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTeamRequest } from './dto/request/CreateTeam.dto';
-import { UserRole } from '@prisma/client';
 import { UpdateTeamRequest } from './dto/request/UpdateTeam.dto';
 import { ResponseDto } from 'src/shared/dto/response.dto';
 import { TeamResponseDto } from './dto/response/Team-response.dto';
-import { plainToInstance } from 'class-transformer';
 import { PaginatedTeamsResponseDto } from './dto/response/PaginatedTeams-response.dto';
+import { UserRole } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class TeamsService {
@@ -22,22 +22,31 @@ export class TeamsService {
     userId: bigint,
     role: UserRole,
   ): Promise<ResponseDto<TeamResponseDto>> {
+    // Check if team name exists
     const isNameExists = await this.prisma.team.findUnique({
       where: { name: request.name },
     });
     if (isNameExists) throw new BadRequestException('This name already exists');
+
     const newTeam = await this.prisma.team.create({
       data: {
         ...request,
         created_by_id: userId,
         created_by_role: role,
         members: {
-          create: {
-            playerId: userId,
-            roleInTeam: 'CAPTAIN',
-            invitedAt: new Date(),
-            respondedAt: new Date(),
-          },
+          create: [
+            {
+              userId: userId,
+              roleInTeam: 'CAPTAIN',
+              invitedAt: new Date(),
+              respondedAt: new Date(),
+            },
+          ],
+        },
+      },
+      include: {
+        members: {
+          include: { user: true },
         },
       },
     });
@@ -45,6 +54,7 @@ export class TeamsService {
     const response = plainToInstance(TeamResponseDto, newTeam, {
       excludeExtraneousValues: true,
     });
+
     return {
       success: true,
       message: 'Team created successfully',
@@ -59,7 +69,7 @@ export class TeamsService {
   ): Promise<ResponseDto<TeamResponseDto>> {
     const dataToUpdate = Object.fromEntries(
       Object.entries(request).filter(
-        ([_, value]) => value != undefined && value != null && value != '',
+        ([_, value]) => value != undefined && value != null && value !== '',
       ),
     );
 
@@ -67,14 +77,13 @@ export class TeamsService {
       throw new BadRequestException('No data provided to update');
 
     const team = await this.prisma.team.findUnique({
-      where: { id: teamId, is_deleted: false },
+      where: { id: teamId },
     });
     if (!team) throw new NotFoundException('Team not found');
-
     if (team.created_by_id !== userId)
       throw new UnauthorizedException('You do not own this team');
 
-    if (request.name !== team.name) {
+    if (request.name && request.name !== team.name) {
       const nameExists = await this.prisma.team.findUnique({
         where: { name: request.name },
       });
@@ -84,11 +93,17 @@ export class TeamsService {
     const updatedTeam = await this.prisma.team.update({
       where: { id: teamId },
       data: dataToUpdate,
+      include: {
+        members: {
+          include: { user: true },
+        },
+      },
     });
 
     const response = plainToInstance(TeamResponseDto, updatedTeam, {
       excludeExtraneousValues: true,
     });
+
     return {
       success: true,
       message: 'Team updated successfully',
@@ -98,28 +113,20 @@ export class TeamsService {
 
   async softDeleteTeam(teamId: bigint, userId: bigint) {
     const team = await this.prisma.team.findUnique({
-      where: { id: teamId, is_deleted: false },
-      include: {
-        members: true,
-      },
+      where: { id: teamId },
+      include: { members: true },
     });
-
-    if (!team) throw new UnauthorizedException('Team not found');
-
+    if (!team) throw new NotFoundException('Team not found');
     if (team.created_by_id !== userId)
       throw new UnauthorizedException('You do not own this team');
 
+    // Check if team is in ongoing competition
     const activeParticipation = await this.prisma.participant.findFirst({
       where: {
         team_id: teamId,
-        competition: {
-          end_date: {
-            gt: new Date(),
-          },
-        },
+        competition: { end_date: { gt: new Date() } },
       },
     });
-
     if (activeParticipation)
       throw new BadRequestException(
         'Team is participating in an ongoing competition',
@@ -127,14 +134,10 @@ export class TeamsService {
 
     await this.prisma.team.update({
       where: { id: teamId },
-      data: {
-        is_deleted: true,
-      },
+      data: { is_deleted: true },
     });
 
-    return {
-      message: 'Team deleted successfully',
-    };
+    return { message: 'Team deleted successfully' };
   }
 
   async getTeams(
@@ -145,43 +148,23 @@ export class TeamsService {
   ): Promise<ResponseDto<PaginatedTeamsResponseDto>> {
     const skip = (page - 1) * limit;
 
-    let whereClause;
-
-    if (owned) {
-      whereClause = { is_deleted: false, created_by_id: userId };
-    } else {
-      whereClause = {
-        is_deleted: false,
-        OR: [
-          { created_by_id: userId },
-          { members: { some: { playerId: userId } } },
-        ],
-      };
-    }
+    const whereClause = owned
+      ? { is_deleted: false, created_by_id: userId }
+      : {
+          is_deleted: false,
+          OR: [
+            { created_by_id: userId },
+            { members: { some: { userId: userId } } },
+          ],
+        };
 
     const teams = await this.prisma.team.findMany({
       where: whereClause,
       skip,
       take: limit,
       orderBy: { created_at: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        logo: true,
-        game: true,
-        members: {
-          select: owned
-            ? {
-                player: {
-                  select: { user: { select: { full_name: true, id: true } } },
-                },
-              }
-            : {
-                player: {
-                  select: { user: { select: { full_name: true, id: true } } },
-                },
-              },
-        },
+      include: {
+        members: { include: { user: true } },
       },
     });
 
@@ -194,8 +177,9 @@ export class TeamsService {
         logo: team.logo,
         game: team.game,
         members: team.members.map((m) => ({
-          id: m.player.user.id.toString(),
-          full_name: m.player.user.full_name,
+          id: m.user.id.toString(),
+          full_name: m.user.full_name,
+          roleInTeam: m.roleInTeam,
         })),
       })),
       meta: {
@@ -220,29 +204,20 @@ export class TeamsService {
     teamId?: bigint;
     name?: string;
   }): Promise<ResponseDto<TeamResponseDto>> {
-    if (!teamId && !name) {
+    if (!teamId && !name)
       throw new BadRequestException('teamId or name must be provided');
-    }
+
     const team = await this.prisma.team.findFirst({
       where: {
         ...(teamId && { id: teamId }),
         ...(name && { name }),
         is_deleted: false,
       },
-      select: {
-        id: true,
-        name: true,
-        logo: true,
-        game: true,
-        members: {
-          select: {
-            player: {
-              select: { user: { select: { full_name: true, id: true } } },
-            },
-          },
-        },
+      include: {
+        members: { include: { user: true } },
       },
     });
+
     if (!team) throw new NotFoundException('Team not found');
 
     const teamResponse = plainToInstance(
@@ -253,8 +228,9 @@ export class TeamsService {
         logo: team.logo,
         game: team.game,
         members: team.members.map((m) => ({
-          id: m.player.user.id.toString(),
-          full_name: m.player.user.full_name,
+          id: m.user.id.toString(),
+          full_name: m.user.full_name,
+          roleInTeam: m.roleInTeam,
         })),
       },
       { excludeExtraneousValues: true },

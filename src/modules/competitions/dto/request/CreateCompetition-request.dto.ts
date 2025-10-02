@@ -60,11 +60,6 @@ export class CreateCompetitionRequestDto {
   @IsNumber({}, { message: 'organization_id must be a number' })
   organization_id: number;
 
-  @ApiProperty({ enum: FeeType, required: false })
-  @IsOptional()
-  @IsEnum(FeeType, { message: 'fee_type must be a valid FeeType' })
-  fee_type?: FeeType;
-
   @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber({}, { message: 'fee_amount must be a number' })

@@ -48,7 +48,7 @@ export class MembershipsService {
 
     const [existingMember, existingInvite] = await Promise.all([
       this.prisma.teamMember.findUnique({
-        where: { teamId_playerId: { teamId, playerId } },
+        where: { teamId_userId: { teamId, userId: player.userId } },
       }),
       this.prisma.teamInvite.findFirst({
         where: { team_id: teamId, invited_id: playerId, status: 'PENDING' },
@@ -98,7 +98,7 @@ export class MembershipsService {
         await tx.teamMember.create({
           data: {
             teamId,
-            playerId,
+            userId: playerId,
             roleInTeam: TeamMemberRole.PLAYER,
             respondedAt: new Date(),
           },
@@ -137,7 +137,7 @@ export class MembershipsService {
     }
 
     const membership = await this.prisma.teamMember.findUnique({
-      where: { teamId_playerId: { teamId, playerId: memberId } },
+      where: { teamId_userId: { teamId, userId: memberId } },
     });
     if (!membership) {
       throw new BadRequestException('Player is not a member of this team');
@@ -156,7 +156,7 @@ export class MembershipsService {
     }
 
     await this.prisma.teamMember.delete({
-      where: { teamId_playerId: { teamId, playerId: memberId } },
+      where: { teamId_userId: { teamId, userId: memberId } },
     });
 
     return {
@@ -213,7 +213,7 @@ export class MembershipsService {
     const teamId = BigInt(payload.teamId);
 
     const existingMember = await this.prisma.teamMember.findUnique({
-      where: { teamId_playerId: { teamId, playerId: userId } },
+      where: { teamId_userId: { teamId, userId: userId } },
     });
     if (existingMember) {
       throw new BadRequestException('You are already a member of this team');
@@ -222,7 +222,7 @@ export class MembershipsService {
     await this.prisma.teamMember.create({
       data: {
         teamId,
-        playerId: userId,
+        userId: userId,
         roleInTeam: TeamMemberRole.PLAYER,
         respondedAt: new Date(),
       },

@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export class PaginatedDataDto<T> {
   items: T[];
   meta: {

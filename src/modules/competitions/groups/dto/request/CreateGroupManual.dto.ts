@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsNotEmpty,
-  IsString,
-  Length,
-} from 'class-validator';
+import { ArrayNotEmpty, IsArray } from 'class-validator';
 
 export class CreateGroupManualDto {
   @ApiProperty({
