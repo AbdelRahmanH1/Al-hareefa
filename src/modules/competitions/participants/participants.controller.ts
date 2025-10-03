@@ -65,6 +65,6 @@ export class ParticipantsController {
     @Req() req: { user: UserPayload },
     @Param('id', ParseBigIntPipe) competitionId: bigint,
   ) {
-    return this.service.cancelParticipation(competitionId, req.user.userId);
+    return this.service.cancelParticipation(req.user.userId, competitionId);
   }
 }

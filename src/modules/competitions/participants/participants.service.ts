@@ -8,10 +8,11 @@ import { ResponseDto } from 'src/shared/dto/response.dto';
 import { getCompetitionStatus } from 'src/shared/helpers/competition-status.util';
 import { ParticipantResponseDto } from './dto/Participant-response.dto';
 import { plainToInstance } from 'class-transformer';
-import { Participant, ParticipantType } from '@prisma/client';
+import { Participant, ParticipantType, Payment } from '@prisma/client';
 import { isSoloCompetition } from 'src/shared/helpers/isSoloCompetition.util';
 import { canCancelParticipation } from 'src/shared/helpers/canCancelParticipation.util';
 import { database } from 'firebase-admin';
+import { log } from 'console';
 
 @Injectable()
 export class ParticipantsService {
@@ -53,6 +54,7 @@ export class ParticipantsService {
         'This competition requires a team, not individual players',
       );
     }
+
     const existing = await this.prisma.participant.findUnique({
       where: {
         competition_id_player_id: {
@@ -72,29 +74,32 @@ export class ParticipantsService {
         },
       });
 
-      if (total == competition.max_teams) {
+      if (competition.max_teams !== null && total >= competition.max_teams) {
         throw new BadRequestException('Competition is full');
       }
 
-      if (competition.fee_amount === 0) {
-        return tx.participant.create({
+      const participant = await tx.participant.create({
+        data: {
+          competition_id: competitionId,
+          player_id: playerId,
+          type: 'PLAYER',
+          status: competition.fee_amount === 0 ? 'ACCEPTED' : 'PENDING',
+        },
+      });
+
+      if (competition.fee_amount && competition.fee_amount > 0) {
+        await tx.payment.create({
           data: {
-            competition_id: competitionId,
-            player_id: playerId,
-            type: 'PLAYER',
-            status: 'ACCEPTED',
-          },
-        });
-      } else {
-        return tx.participant.create({
-          data: {
-            competition_id: competitionId,
-            player_id: playerId,
-            type: 'PLAYER',
+            participant_id: participant.id,
+            amount: competition.fee_amount,
             status: 'PENDING',
+            created_at: new Date(),
+            user_id: playerId,
           },
         });
       }
+
+      return participant;
     });
 
     const response = plainToInstance(ParticipantResponseDto, participant, {
@@ -104,7 +109,7 @@ export class ParticipantsService {
     return {
       success: true,
       message:
-        competition.fee_amount == 0
+        competition.fee_amount === 0
           ? 'Player registered successfully'
           : 'Player registered successfully, payment required',
       data: response,
@@ -121,6 +126,7 @@ export class ParticipantsService {
     });
 
     if (!team) throw new NotFoundException('Team not found');
+
     const competition =
       await this.validateCompetitionForRegistration(competitionId);
 
@@ -132,6 +138,7 @@ export class ParticipantsService {
         'This competition is for individual players only, not teams',
       );
     }
+
     const existing = await this.prisma.participant.findUnique({
       where: {
         competition_id_team_id: {
@@ -145,88 +152,137 @@ export class ParticipantsService {
 
     const participant = await this.prisma.$transaction(async (tx) => {
       const total = await tx.participant.count({
-        where: {
-          competition_id: competitionId,
-          status: 'ACCEPTED',
-        },
+        where: { competition_id: competitionId, status: 'ACCEPTED' },
       });
-      if (total == competition.max_teams) {
+
+      if (competition.max_teams !== null && total >= competition.max_teams) {
         throw new BadRequestException('Competition is full');
       }
-      if (competition.fee_amount === 0) {
-        return tx.participant.create({
+
+      const participant = await tx.participant.create({
+        data: {
+          competition_id: competitionId,
+          team_id: teamId,
+          type: ParticipantType.TEAM,
+          status:
+            competition.fee_amount && competition.fee_amount > 0
+              ? 'PENDING'
+              : 'ACCEPTED',
+        },
+      });
+
+      if (competition.fee_amount && competition.fee_amount > 0) {
+        await tx.payment.create({
           data: {
-            competition_id: competitionId,
-            team_id: teamId,
-            type: 'TEAM',
-            status: 'ACCEPTED',
-          },
-        });
-      } else {
-        return tx.participant.create({
-          data: {
-            competition_id: competitionId,
-            team_id: teamId,
-            type: ParticipantType.TEAM,
+            participant_id: participant.id,
+            amount: competition.fee_amount,
             status: 'PENDING',
+            created_at: new Date(),
+            user_id: userId,
           },
         });
       }
+
+      return participant;
     });
+
     const response = plainToInstance(ParticipantResponseDto, participant, {
       excludeExtraneousValues: true,
     });
+
     return {
       success: true,
-      message: 'Team registered successfully',
+      message:
+        competition.fee_amount && competition.fee_amount > 0
+          ? 'Team registered successfully, payment required'
+          : 'Team registered successfully',
       data: response,
     };
   }
 
-  async cancelParticipation(competitionId: bigint, userId: bigint) {
+  async cancelParticipation(
+    userId: bigint,
+    competitionId: bigint,
+  ): Promise<ResponseDto<null>> {
     const competition = await this.prisma.competition.findUnique({
       where: { id: competitionId },
       include: { type: true },
     });
 
-    if (!competition) throw new BadRequestException('Competition not found');
-    if (competition.end_date < new Date())
+    if (!competition) throw new NotFoundException('Competition not found');
+    if (competition.end_date < new Date()) {
       throw new BadRequestException('Competition already ended');
+    }
 
-    let participant: Participant | null = null;
+    let participant: (Participant & { payments: Payment[] }) | null = null;
 
     if (isSoloCompetition(competition)) {
       participant = await this.prisma.participant.findFirst({
         where: { competition_id: competitionId, player_id: userId },
+        include: { payments: true },
       });
     } else {
       const team = await this.prisma.team.findFirst({
-        where: { created_by_id: userId },
+        where: { created_by_id: userId, is_deleted: false },
       });
       if (!team) throw new NotFoundException('Team not found');
 
       participant = await this.prisma.participant.findFirst({
         where: { competition_id: competitionId, team_id: team.id },
+        include: { payments: true },
       });
     }
-
     if (!participant) throw new NotFoundException('Participation not found');
 
-    const isPaid = competition.fee_type === 'PAID';
-    const cancellableStatuses = ['PENDING']; // extend if needed later
+    if (participant.status === 'REJECTED') {
+      throw new BadRequestException('Participation already cancelled');
+    }
 
-    if (isPaid && !cancellableStatuses.includes(participant.status)) {
+    if (competition.fee_type === 'FREE') {
+      if (competition.start_date > new Date()) {
+        await this.prisma.participant.delete({ where: { id: participant.id } });
+        return {
+          success: true,
+          message: 'Participation cancelled successfully',
+          data: null,
+        };
+      }
       throw new BadRequestException(
-        'Cannot cancel participation after payment',
+        'Cannot cancel free participation after approval',
       );
     }
 
-    await this.prisma.participant.delete({ where: { id: participant.id } });
+    if (competition.fee_type === 'PAID') {
+      const successPayment = participant.payments?.find(
+        (p) => p.status === 'COMPLETED',
+      );
+      if (successPayment) {
+        throw new BadRequestException(
+          'Cannot cancel participation with completed payment',
+        );
+      }
 
-    return {
-      success: true,
-      message: 'Participation cancelled successfully',
-      data: null,
-    };
+      const pendingPayment = participant.payments?.find(
+        (p) => p.status === 'PENDING',
+      );
+
+      if (pendingPayment && participant.status === 'PENDING') {
+        await this.prisma.$transaction([
+          this.prisma.payment.delete({ where: { id: pendingPayment.id } }),
+          this.prisma.participant.delete({ where: { id: participant.id } }),
+        ]);
+        return {
+          success: true,
+          message: 'Participation cancelled successfully',
+          data: null,
+        };
+      }
+
+      throw new BadRequestException(
+        'Cannot cancel participation: no cancellable payment found',
+      );
+    }
+
+    throw new BadRequestException('Invalid competition fee type');
   }
 }
