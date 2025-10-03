@@ -206,10 +206,12 @@ model PlayerBooking {
   status        BookingStatus @default(REQUESTED)
   price         Float? @default(0)
   booked_at     DateTime @default(now())
-  scheduled_at  DateTime?
+  start_at      DateTime?   //
+  end_at        DateTime?   
   notes         String?
   payments      Payment[]
 }
+
 
 // ===============================
 // Teams
