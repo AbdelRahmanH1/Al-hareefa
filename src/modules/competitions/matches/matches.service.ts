@@ -365,73 +365,130 @@ export class MatchesService {
     userId: bigint,
     matchId: bigint,
     data: SetMatchResultDto,
-  ): Promise<ResponseDto<AllMatchResponseDto>> {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
-      include: {
-        competition: true,
-        participant1: {
-          include: { team: true, player: { include: { user: true } } },
-        },
-        participant2: {
-          include: { team: true, player: { include: { user: true } } },
-        },
-      },
-    });
-    if (!match) throw new NotFoundException('Match not found');
-    if (match.competition.organization_id !== userId)
-      throw new ForbiddenException('Not authorized');
-    if (match.status === 'COMPLETED')
-      throw new BadRequestException('Result already set');
-
+  ): Promise<ResponseDto<any>> {
     const { scoreParticipant1, scoreParticipant2 } = data;
-    if (
-      match.stage !== 'GROUP_STAGE' &&
-      scoreParticipant1 === scoreParticipant2
-    )
-      throw new BadRequestException('Draw not allowed');
 
-    const winnerId =
-      scoreParticipant1 === scoreParticipant2
-        ? null
-        : scoreParticipant1 > scoreParticipant2
-          ? match.participant1_id
-          : match.participant2_id;
+    const updatedMatch = await this.prisma.$transaction(async (prisma) => {
+      const match = await prisma.match.findUnique({
+        where: { id: matchId },
+        select: {
+          id: true,
+          competition: { select: { organization_id: true } },
+          status: true,
+          stage: true,
+          group_id: true,
+          participant1_id: true,
+          participant2_id: true,
+          participant1: {
+            select: {
+              id: true,
+              player: {
+                select: { user: { select: { id: true, full_name: true } } },
+              },
+            },
+          },
+          participant2: {
+            select: {
+              id: true,
+              player: {
+                select: { user: { select: { id: true, full_name: true } } },
+              },
+            },
+          },
+        },
+      });
 
-    const updatedMatch = await this.prisma.match.update({
-      where: { id: matchId },
-      data: {
-        score_participant1: scoreParticipant1,
-        score_participant2: scoreParticipant2,
-        winner_participant_id: winnerId,
-        status: 'COMPLETED',
-      },
-      include: {
+      if (!match) throw new NotFoundException('Match not found');
+      if (match.competition.organization_id !== userId)
+        throw new ForbiddenException('Not authorized');
+      if (match.status === 'COMPLETED')
+        throw new BadRequestException('Result already set');
+      if (
+        match.stage !== 'GROUP_STAGE' &&
+        scoreParticipant1 === scoreParticipant2
+      )
+        throw new BadRequestException('Draw not allowed');
+
+      const winnerId =
+        scoreParticipant1 === scoreParticipant2
+          ? null
+          : scoreParticipant1 > scoreParticipant2
+            ? match.participant1_id
+            : match.participant2_id;
+
+      const updated = await prisma.match.update({
+        where: { id: matchId },
+        data: {
+          score_participant1: scoreParticipant1,
+          score_participant2: scoreParticipant2,
+          winner_participant_id: winnerId,
+          status: 'COMPLETED',
+        },
+        select: {
+          id: true,
+          stage: true,
+          status: true,
+          participant1: {
+            select: {
+              id: true,
+              player: {
+                select: { user: { select: { id: true, full_name: true } } },
+              },
+            },
+          },
+          participant2: {
+            select: {
+              id: true,
+              player: {
+                select: { user: { select: { id: true, full_name: true } } },
+              },
+            },
+          },
+          score_participant1: true,
+          score_participant2: true,
+          winner_participant_id: true,
+          competition_id: true,
+        },
+      });
+
+      if (match.stage === 'GROUP_STAGE' && match.group_id) {
+        await updateGroupStanding({
+          prisma: this.prisma,
+          matchId: match.id,
+          scoreParticipant1,
+          scoreParticipant2,
+          participant1Id: match.participant1_id!,
+          participant2Id: match.participant2_id!,
+          groupId: match.group_id!,
+        });
+      }
+      if (!updated.participant1 || !updated.participant2) {
+        throw new Error('Participants not found');
+      }
+
+      return {
+        id: updated.id.toString(),
+        competitionId: updated.competition_id.toString(),
+        stage: updated.stage,
+        status: updated.status,
         participant1: {
-          include: { team: true, player: { include: { user: true } } },
+          id: updated.participant1.id,
+          name: updated.participant1.player?.user?.full_name ?? 'Unknown',
         },
         participant2: {
-          include: { team: true, player: { include: { user: true } } },
+          id: updated?.participant2.id ?? 0,
+          name: updated.participant2?.player?.user?.full_name ?? 'Unknown',
         },
-      },
+        scoreParticipant1: updated.score_participant1,
+        scoreParticipant2: updated.score_participant2,
+        winnerParticipantId: updated.winner_participant_id?.toString() ?? null,
+      };
     });
-
-    if (match.stage === 'GROUP_STAGE' && match.group_id) {
-      await updateGroupStanding({
-        prisma: this.prisma,
-        matchId: match.id,
-        scoreParticipant1,
-        scoreParticipant2,
-        participant1Id: match.participant1_id!,
-        participant2Id: match.participant2_id!,
-        groupId: match.group_id!,
-      });
-    }
 
     return {
       success: true,
       message: 'Match result set successfully',
-      data: mapMatchToDto(updatedMatch),
+      data: updatedMatch,
     };
   }
 

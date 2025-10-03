@@ -36,39 +36,25 @@ export async function updateGroupStanding({
   ];
 
   for (const s of standingsData) {
-    const existing = await prisma.groupStanding.findUnique({
+    await prisma.groupStanding.upsert({
       where: {
         groupId_participantId: {
           groupId,
           participantId: s.participantId,
         },
       },
+      update: {
+        points: { increment: s.points },
+        wins: { increment: s.wins },
+        losses: { increment: s.losses },
+      },
+      create: {
+        groupId,
+        participantId: s.participantId,
+        points: s.points,
+        wins: s.wins,
+        losses: s.losses,
+      },
     });
-
-    if (existing) {
-      await prisma.groupStanding.update({
-        where: {
-          groupId_participantId: {
-            groupId,
-            participantId: s.participantId,
-          },
-        },
-        data: {
-          points: existing.points + s.points,
-          wins: existing.wins + s.wins,
-          losses: existing.losses + s.losses,
-        },
-      });
-    } else {
-      await prisma.groupStanding.create({
-        data: {
-          groupId,
-          participantId: s.participantId,
-          points: s.points,
-          wins: s.wins,
-          losses: s.losses,
-        },
-      });
-    }
   }
 }

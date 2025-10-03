@@ -28,6 +28,17 @@ import { UserRole } from '@prisma/client';
 export class MatchesController {
   constructor(private readonly matcheService: MatchesService) {}
 
+  @ApiOperation({ summary: 'set match result' })
+  @ApiResponseDto(AllMatchResponseDto)
+  @Post('match/:matchId/set-result')
+  async setMatchResult(
+    @Req() req: { user: UserPayload },
+    @Param('matchId', ParseBigIntPipe) matchId: bigint,
+    @Body() data: SetMatchResultDto,
+  ) {
+    return this.matcheService.setMatchResult(req.user.userId, matchId, data);
+  }
+
   @ApiOperation({ summary: 'create match manually' })
   @ApiResponseDto(AllMatchResponseDto)
   @Post(':competitionId/match/create/manual')
@@ -88,16 +99,5 @@ export class MatchesController {
     @Body() data: UpadateMatchRequestDto,
   ) {
     return this.matcheService.updateMatch(matchId, req.user.userId, data);
-  }
-
-  @ApiOperation({ summary: 'set match result' })
-  @ApiResponseDto(AllMatchResponseDto)
-  @Post('match/:macthId/set-result')
-  async setMatchResult(
-    @Param('matchId', ParseBigIntPipe) matchId: bigint,
-    @Req() req: { user: UserPayload },
-    @Body() data: SetMatchResultDto,
-  ) {
-    return this.matcheService.setMatchResult(req.user.userId, matchId, data);
   }
 }
