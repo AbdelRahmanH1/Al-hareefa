@@ -39,6 +39,10 @@ export class UserResponseDto {
   @Expose()
   city?: string;
 
+  @ApiProperty({ description: 'Photo URL of the user', required: false })
+  @Expose()
+  photo_url?: string;
+
   @ApiProperty({ type: PlayerProfileResponseDto, required: false })
   @Expose()
   @Type(() => PlayerProfileResponseDto)

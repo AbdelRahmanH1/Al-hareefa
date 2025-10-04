@@ -46,6 +46,11 @@ class UpdateUserDto {
   @IsString()
   city?: string;
 
+  @ApiProperty({ description: 'Photo URL', required: false })
+  @IsOptional()
+  @IsUrl({}, { message: 'Photo URL must be a valid URL' })
+  photo_url?: string;
+
   @ApiProperty({
     description: 'Birth date',
     required: false,
