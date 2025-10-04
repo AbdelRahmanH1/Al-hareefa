@@ -127,6 +127,7 @@ model User {
   role        UserRole
   city        String
   birth_date  DateTime @db.Date
+  photo_url String?
   is_active   Boolean  @default(true)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -228,7 +229,6 @@ model Team {
   is_deleted    Boolean @default(false)
 
   members       TeamMember[]
-  multimedia    Multimedia[]
   team_invites  TeamInvite[]
   participants  Participant[]
 }
@@ -466,19 +466,18 @@ model OrganizationProfile {
 // Multimedia & Notifications
 // ===============================
 model Multimedia {
-  id             BigInt     @id @default(autoincrement())
-  competition    Competition? @relation(fields: [competition_id], references: [id], onDelete: SetNull)
-  competition_id BigInt?
-  team           Team?       @relation(fields: [team_id], references: [id], onDelete: SetNull)
-  team_id        BigInt?
+  id             BigInt       @id @default(autoincrement())
+  competition    Competition   @relation(fields: [competition_id], references: [id], onDelete: Cascade)
+  competition_id BigInt
   title          String
   description    String?
-  media_type     MediaType   
-  url            String      
-  uploaded_by_id BigInt      
-  uploaded_by    User        @relation(fields: [uploaded_by_id], references: [id], onDelete: Cascade)
-  created_at     DateTime    @default(now())
+  media_type     MediaType
+  url            String
+  uploaded_by_id BigInt
+  uploaded_by    User          @relation(fields: [uploaded_by_id], references: [id], onDelete: Cascade)
+  created_at     DateTime      @default(now())
 }
+
 
 model Notification {
   id             BigInt   @id @default(autoincrement())
