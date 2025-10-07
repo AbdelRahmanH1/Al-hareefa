@@ -10,10 +10,6 @@ async function bootstrap() {
     return this.toString();
   };
 
-  const prisma = new PrismaClient({
-    log: ['warn', 'error'],
-  });
-
   const app = await NestFactory.create(AppModule, {
     logger: ['warn', 'error'],
   });
