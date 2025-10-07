@@ -4,39 +4,36 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { jwtConfig } from 'src/config/JwtConfig';
-import { RedisJwtService } from 'src/redis/redis-jwt.service';
-import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
+import * as admin from 'firebase-admin';
+import { FirebaseService } from 'src/modules/auth/firebase/firebase.service';
+import { UserRole } from '@prisma/client';
+import { UserPayload } from '../interfaces/user-payload.interface';
 
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly redis: RedisJwtService,
-  ) {}
+  constructor(private readonly firebaseService: FirebaseService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
+    const idToken = this.extractTokenFromHeader(request);
 
-    if (!token) {
+    if (!idToken) {
       throw new UnauthorizedException('Token missing or invalid');
     }
 
     try {
-      const decoded = this.jwtService.verify<UserPayload>(token, {
-        secret: jwtConfig.SECRET_KEY,
-      });
-      const isValid = await this.redis.validateToken(decoded.userId, token);
-      if (!isValid) {
-        throw new UnauthorizedException('token expired');
-      }
-      decoded.userId = BigInt(decoded.userId);
-      request.user = decoded;
+      const decodedToken = await admin.auth().verifyIdToken(idToken, true);
+      const user: UserPayload = {
+        userId: BigInt(decodedToken.userId),
+        role: decodedToken.role as UserRole,
+      };
+
+      request.user = user;
       return true;
     } catch (error) {
-      throw new UnauthorizedException('Token invalid');
+      console.error('Firebase Auth error:', error);
+      throw new UnauthorizedException('Token invalid or revoked');
     }
   }
   private extractTokenFromHeader(request: Request): string | undefined {

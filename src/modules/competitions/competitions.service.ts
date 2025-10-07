@@ -13,6 +13,7 @@ import {
 import { GetCompetitionsFilterDto } from './dto/request/GetCompetitionsFilter.dto';
 import { PaginatedDataDto } from 'src/shared/dto/PaginatedData.dto';
 import { getCompetitionStatus } from 'src/shared/helpers/competition-status.util';
+import { UpdateCompetitionRequestDto } from './dto/request/UpdateCompetition-request.dto';
 
 @Injectable()
 export class CompetitionsService {
@@ -22,7 +23,6 @@ export class CompetitionsService {
     organizer_id: bigint,
     data: CreateCompetitionRequestDto,
   ): Promise<ResponseDto<CompetitionResponseDto>> {
-    // -------------------- Organizer Validation --------------------
     const organizer = await this.prisma.organizationProfile.findFirst({
       where: { user_id: organizer_id, approval_status: 'ACCEPTED' },
     });
@@ -30,7 +30,6 @@ export class CompetitionsService {
       throw new BadRequestException('Organizer is not active or approved');
     }
 
-    // -------------------- Competition Name Validation --------------------
     const existing = await this.prisma.competition.findFirst({
       where: { name: data.name },
     });
@@ -38,7 +37,6 @@ export class CompetitionsService {
       throw new BadRequestException('Competition name already exists');
     }
 
-    // -------------------- Dates Validation --------------------
     if (data.end_date <= data.start_date) {
       throw new BadRequestException('End date must be after start date');
     }
@@ -46,7 +44,6 @@ export class CompetitionsService {
       throw new BadRequestException('Start date cannot be in the past');
     }
 
-    // -------------------- Competition Type Validation --------------------
     const compType = await this.prisma.competitionType.findUnique({
       where: { id: data.typeId },
     });
@@ -54,10 +51,8 @@ export class CompetitionsService {
       throw new BadRequestException('Invalid competition type');
     }
 
-    // -------------------- Fee Type Validation --------------------
     const fee_type: FeeType =
       data.fee_amount && data.fee_amount > 0 ? 'PAID' : 'FREE';
-    // -------------------- Competition Creation --------------------
     const competition = await this.prisma.competition.create({
       data: {
         name: data.name,
@@ -79,7 +74,6 @@ export class CompetitionsService {
       },
     });
 
-    // -------------------- Response --------------------
     return {
       success: true,
       message: 'Competition created successfully',
@@ -116,6 +110,102 @@ export class CompetitionsService {
     return {
       success: true,
       message: 'Competition deleted successfully',
+      data: null,
+    };
+  }
+
+  async updateCompetition(
+    competitionId: bigint,
+    organizer_id: bigint,
+    data: UpdateCompetitionRequestDto,
+  ): Promise<ResponseDto<null>> {
+    const competition = await this.prisma.competition.findUnique({
+      where: { id: competitionId },
+      include: { organization: true },
+    });
+
+    if (!competition) throw new BadRequestException('Competition not found');
+
+    if (competition.organization_id !== organizer_id)
+      throw new BadRequestException(
+        'You are not the owner of this competition',
+      );
+
+    if (
+      competition.approval_status === 'ACCEPTED' ||
+      competition.approval_status === 'REJECTED'
+    )
+      throw new BadRequestException(
+        'Cannot edit a competition that is already processed',
+      );
+
+    if (competition.start_date <= new Date())
+      throw new BadRequestException(
+        'Cannot update a competition that has already started',
+      );
+
+    if (data.start_date && competition.start_date) {
+      const newStartDate = new Date(data.start_date);
+      if (
+        newStartDate.getTime() !== new Date(competition.start_date).getTime()
+      ) {
+        throw new BadRequestException(
+          'You cannot change the start date after creation',
+        );
+      }
+    }
+
+    if (data.fee_amount !== undefined) {
+      const hasParticipants = await this.prisma.participant.findFirst({
+        where: {
+          competition_id: competitionId,
+          status: { in: ['PENDING', 'ACCEPTED'] },
+        },
+      });
+      if (hasParticipants) {
+        throw new BadRequestException(
+          'Cannot change the fee amount after participants have joined',
+        );
+      }
+    }
+
+    if (data.name && data.name !== competition.name) {
+      const existing = await this.prisma.competition.findFirst({
+        where: { name: data.name },
+      });
+      if (existing)
+        throw new BadRequestException('Competition name already exists');
+    }
+
+    if (data.end_date && data.start_date && data.end_date <= data.start_date)
+      throw new BadRequestException('End date must be after start date');
+
+    if (data.start_date && data.start_date < new Date())
+      throw new BadRequestException('Start date cannot be in the past');
+
+    const fee_type: FeeType =
+      data.fee_amount && data.fee_amount > 0 ? 'PAID' : 'FREE';
+
+    const updated = await this.prisma.competition.update({
+      where: { id: competitionId },
+      data: {
+        ...data,
+        fee_type,
+        eliminationType: data.eliminationType ?? competition.eliminationType,
+        hasGroupStage:
+          data.eliminationType === 'KNOCKOUT'
+            ? true
+            : data.eliminationType === 'SINGLE_ELIMINATION'
+              ? false
+              : competition.hasGroupStage,
+      },
+      include: { organization: true, type: true },
+    });
+
+    // -------------------- Response --------------------
+    return {
+      success: true,
+      message: 'Competition updated successfully',
       data: null,
     };
   }

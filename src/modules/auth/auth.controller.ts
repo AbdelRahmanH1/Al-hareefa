@@ -13,29 +13,42 @@ import { UserPayload } from 'src/shared/interfaces/user-payload.interface';
 import { UserRole } from '@prisma/client';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiExtraModels,
   ApiOperation,
   ApiResponse,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
-import { UserResponseDto } from './dto/response/UserResponse.dto';
 import { UserResponseWrapperDto } from './dto/response/UserResponseWrapper.dto';
 import { AuthenticationGuard } from 'src/shared/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/shared/guards/authorization.gurad';
+import { RegisterUserRequestDto } from './dto/request/registration-request.dto';
+import { ResponseDto } from 'src/shared/dto/response.dto';
+import { FirebaseAuthResponseData } from './firebase/FirebaseAuthResponseData ';
+import { CreatePlayerProfileRequestDto } from './dto/request/CreatePlayer-request.dto';
+import { CreateCoachProfileRequestDto } from './dto/request/createCoach-request.dto';
+import { CreateOrganizationProfileRequestDto } from './dto/request/CreateOrganization-request.dto';
 
 @ApiTags('users')
+@ApiExtraModels(
+  CreatePlayerProfileRequestDto,
+  CreateCoachProfileRequestDto,
+  CreateOrganizationProfileRequestDto,
+)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
+  /* @Post('register')
   async register() {
     return this.authService.registerDummy();
-  }
+  } */
 
-  @Post('login')
+  /*  @Post('login')
   async login() {
     return this.authService.loginDummy();
-  }
+  } */
 
   @Get('me')
   @UseGuards(AuthenticationGuard)
@@ -78,73 +91,67 @@ export class AuthController {
     );
   }
 
-  /* @Post('firebase-register')
-  async Fire(@Body() dto: RegisterUserDto) {
-    // 1. Check if user already exists
-    const existing = await this.userService.findByFirebaseUid(dto.firebaseUid);
-    if (existing) throw new BadRequestException('User already exists');
+  /* @Post('firebase')
+  @ApiOperation({ summary: 'Login or signup using Firebase token' })
+  @ApiBody({
+    description: 'Firebase ID token',
+    schema: { type: 'object', properties: { firebaseId: { type: 'string' } } },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged in or registered successfully',
+    type: FirebaseAuthResponseData,
+  })
+  async firebase(@Body('firebaseId') firebaseId: string) {
+    return this.authService.firebase(firebaseId);
+  }
 
-    // 2. Age validation
-    const birthDate = new Date(dto.birthDate);
-    const age = Math.floor(
-      (Date.now() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
-    );
-
-    if (
-      dto.role === 'PLAYER' &&
-      age < 18 &&
-      !('guardianId' in dto.profile && dto.profile.guardianId)
-    ) {
-      throw new BadRequestException(
-        'Players under 18 must provide guardian information',
-      );
-    }
-
-    if ((dto.role === 'COACH' || dto.role === 'ORGANIZATION') && age < 18) {
-      throw new BadRequestException(
-        `${dto.role} must be at least 18 years old`,
-      );
-    }
-
-    // 3. Create user
-    const user = await this.userService.createUser({
-      firebaseUid: dto.firebaseUid,
-      email: dto.email,
-      fullName: dto.fullName,
-      role: dto.role,
-      birthDate: birthDate,
-    });
-
-    // 4. Create profile based on role
-    switch (dto.role) {
-      case 'PLAYER':
-        await this.userService.createPlayerProfile(user.id, dto.profile);
-        break;
-      case 'COACH':
-        await this.userService.createCoachProfile(user.id, dto.profile);
-        break;
-      case 'ORGANIZATION':
-        await this.userService.createOrganizationProfile(user.id, dto.profile);
-        break;
-      default:
-        throw new BadRequestException('Invalid role');
-    }
-
-    // 5. Issue JWT
-    const token = this.jwtService.sign({ userId: user.id, role: user.role });
-
-    // 6. Store JWT in Redis
-    await this.redisService.set(`user:${user.id}:token`, token);
-
-    return {
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
+  @Post('complete-registration')
+  @UseGuards(AuthenticationGuard)
+  @ApiBearerAuth('bearerAuth')
+  @ApiOperation({ summary: 'Complete user registration with full profile' })
+  @ApiExtraModels(
+    CreatePlayerProfileRequestDto,
+    CreateCoachProfileRequestDto,
+    CreateOrganizationProfileRequestDto,
+  )
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        firebase_id: { type: 'string' },
+        email: { type: 'string' },
+        full_name: { type: 'string' },
+        phone: { type: 'string' },
+        gender: { type: 'string', enum: ['MALE', 'FEMALE', 'OTHER'] },
+        city: { type: 'string' },
+        role: { type: 'string', enum: ['PLAYER', 'COACH', 'ORGANIZATION'] },
+        birthDate: { type: 'string', format: 'date' },
+        profile: {
+          oneOf: [
+            { $ref: getSchemaPath(CreatePlayerProfileRequestDto) },
+            { $ref: getSchemaPath(CreateCoachProfileRequestDto) },
+            { $ref: getSchemaPath(CreateOrganizationProfileRequestDto) },
+          ],
+        },
       },
-    };
+      required: ['firebase_id', 'email', 'full_name', 'role', 'profile'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile completed successfully',
+    type: ResponseDto,
+  })
+  async completeRegistration(
+    @Req() req: { user: UserPayload },
+    @Body() data: RegisterUserRequestDto,
+  ): Promise<ResponseDto<any>> {
+    return this.authService.completeRegistration(req.user.userId, data);
   } */
+
+  @Post('firebase2')
+  async firebase2(@Body() data: RegisterUserRequestDto) {
+    return this.authService.firebase3(data);
+  }
 }

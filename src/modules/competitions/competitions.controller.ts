@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -25,6 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { ApiResponseDto } from 'src/shared/dto/ApiResponse.dto';
 import { CompetitionResponseDto } from './dto/response/Competition-response.dto';
+import { UpdateCompetitionRequestDto } from './dto/request/UpdateCompetition-request.dto';
 
 @ApiTags('Competition')
 @ApiBearerAuth('bearerAuth')
@@ -44,15 +46,15 @@ export class CompetitionsController {
     return this.service.createCompetition(req.user.userId, data);
   }
 
-  /*  @Patch(':id')
-    @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
+  @Patch(':id')
+  @UseGuards(AuthorizationGuard(UserRole.ORGANIZATION))
   async update(
     @Param('id', ParseBigIntPipe) eventId: bigint,
     @Req() req: { user: UserPayload },
-    data: UpdateCompetitionRequestDto,
+    @Body() data: UpdateCompetitionRequestDto,
   ) {
     return this.service.updateCompetition(eventId, req.user.userId, data);
-  } */
+  }
 
   @ApiOperation({ summary: 'delete competition by id' })
   @ApiResponse({

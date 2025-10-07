@@ -17,7 +17,6 @@ import { PaymentsModule } from './modules/payments/payments.module';
   imports: [
     PrismaModule,
     AuthModule,
-    RedisModule,
     TeamsModule,
     AdminModule,
     CompetitionsModule,

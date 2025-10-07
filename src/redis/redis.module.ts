@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { RedisJwtService } from './redis-jwt.service';
 import { createRedisConnection } from './redis.connection';
 
-@Global()
+//@Global()
 @Module({
   providers: [
     {
