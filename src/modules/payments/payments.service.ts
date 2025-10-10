@@ -118,7 +118,9 @@ export class PaymentsService {
     if (payment.status == 'COMPLETED') {
       throw new BadRequestException('Payment already completed');
     }
-
+    if (payment.status == 'FAILED') {
+      throw new BadRequestException('Payment already failed');
+    }
     const now = new Date();
 
     if (

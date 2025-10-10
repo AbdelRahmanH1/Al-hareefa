@@ -16,6 +16,6 @@ export class PaymentsController {
 
   @Post('pay')
   async pay() {
-    return this.service.createPayment(BigInt(14), BigInt(7));
+    return this.service.createPayment(BigInt(14), BigInt(9));
   }
 }
