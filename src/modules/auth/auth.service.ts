@@ -230,9 +230,14 @@ export class AuthService {
   } */
 
   async firebase3(data: RegisterUserRequestDto) {
-    const decodedToken = await this.firebaseService.verifyIdToken(
-      data.firebase_token,
-    );
+    let decodedToken;
+    try {
+      decodedToken = await this.firebaseService.verifyIdToken(
+        data.firebase_token,
+      );
+    } catch (err) {
+      throw new BadRequestException('Invalid or expired Firebase token');
+    }
 
     if (decodedToken.uid !== data.firebase_id) {
       throw new BadRequestException(
