@@ -10,9 +10,6 @@ import { ParticipantResponseDto } from './dto/Participant-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { Participant, ParticipantType, Payment } from '@prisma/client';
 import { isSoloCompetition } from 'src/shared/helpers/isSoloCompetition.util';
-import { canCancelParticipation } from 'src/shared/helpers/canCancelParticipation.util';
-import { database } from 'firebase-admin';
-import { log } from 'console';
 
 @Injectable()
 export class ParticipantsService {
@@ -35,6 +32,12 @@ export class ParticipantsService {
 
     if (competitionDateStatus !== 'UPCOMING') {
       throw new BadRequestException('Competition is not open for registration');
+    }
+
+    const registrationEnd = new Date(competition.start_date);
+    registrationEnd.setDate(registrationEnd.getDate() - 1);
+    if (new Date() > registrationEnd) {
+      throw new BadRequestException('Registration period has ended');
     }
     return competition;
   }
@@ -66,54 +69,63 @@ export class ParticipantsService {
 
     if (existing) throw new BadRequestException('Already registered');
 
-    const participant = await this.prisma.$transaction(async (tx) => {
-      const total = await tx.participant.count({
-        where: {
-          competition_id: competitionId,
-          status: 'ACCEPTED',
-        },
-      });
-
-      if (competition.max_teams !== null && total >= competition.max_teams) {
-        throw new BadRequestException('Competition is full');
-      }
-
-      const participant = await tx.participant.create({
-        data: {
-          competition_id: competitionId,
-          player_id: playerId,
-          type: 'PLAYER',
-          status: competition.fee_amount === 0 ? 'ACCEPTED' : 'PENDING',
-        },
-      });
-
-      if (competition.fee_amount && competition.fee_amount > 0) {
-        await tx.payment.create({
-          data: {
-            participant_id: participant.id,
-            amount: competition.fee_amount,
-            status: 'PENDING',
-            created_at: new Date(),
-            user_id: playerId,
+    try {
+      const participant = await this.prisma.$transaction(async (tx) => {
+        const total = await tx.participant.count({
+          where: {
+            competition_id: competitionId,
+            status: { in: ['ACCEPTED', 'PENDING_PAYMENT'] },
           },
         });
+
+        if (competition.max_teams !== null && total >= competition.max_teams) {
+          throw new BadRequestException(
+            'Competition is full or awaiting payment from other participants',
+          );
+        }
+        const participant = await tx.participant.create({
+          data: {
+            competition_id: competitionId,
+            player_id: playerId,
+            type: 'PLAYER',
+            status:
+              competition.fee_type == 'FREE' ? 'ACCEPTED' : 'PENDING_PAYMENT',
+          },
+        });
+
+        if (competition.fee_type == 'PAID') {
+          await tx.payment.create({
+            data: {
+              participant_id: participant.id,
+              amount: competition.fee_amount,
+              status: 'PENDING',
+              created_at: new Date(),
+              user_id: playerId,
+            },
+          });
+        }
+
+        return participant;
+      });
+
+      const response = plainToInstance(ParticipantResponseDto, participant, {
+        excludeExtraneousValues: true,
+      });
+
+      return {
+        success: true,
+        message:
+          competition.fee_type == 'FREE'
+            ? 'Player registered successfully'
+            : 'Player registered successfully, payment required',
+        data: response,
+      };
+    } catch (error: any) {
+      if (error.code == 'P2002') {
+        throw new BadRequestException('Already registered');
       }
-
-      return participant;
-    });
-
-    const response = plainToInstance(ParticipantResponseDto, participant, {
-      excludeExtraneousValues: true,
-    });
-
-    return {
-      success: true,
-      message:
-        competition.fee_amount === 0
-          ? 'Player registered successfully'
-          : 'Player registered successfully, payment required',
-      data: response,
-    };
+      throw error;
+    }
   }
 
   async registerTeam(
@@ -149,55 +161,64 @@ export class ParticipantsService {
     });
 
     if (existing) throw new BadRequestException('Team already registered');
-
-    const participant = await this.prisma.$transaction(async (tx) => {
-      const total = await tx.participant.count({
-        where: { competition_id: competitionId, status: 'ACCEPTED' },
-      });
-
-      if (competition.max_teams !== null && total >= competition.max_teams) {
-        throw new BadRequestException('Competition is full');
-      }
-
-      const participant = await tx.participant.create({
-        data: {
-          competition_id: competitionId,
-          team_id: teamId,
-          type: ParticipantType.TEAM,
-          status:
-            competition.fee_amount && competition.fee_amount > 0
-              ? 'PENDING'
-              : 'ACCEPTED',
-        },
-      });
-
-      if (competition.fee_amount && competition.fee_amount > 0) {
-        await tx.payment.create({
-          data: {
-            participant_id: participant.id,
-            amount: competition.fee_amount,
-            status: 'PENDING',
-            created_at: new Date(),
-            user_id: userId,
+    try {
+      const participant = await this.prisma.$transaction(async (tx) => {
+        const total = await tx.participant.count({
+          where: {
+            competition_id: competitionId,
+            status: { in: ['ACCEPTED', 'PENDING_PAYMENT'] },
           },
         });
+
+        if (competition.max_teams !== null && total >= competition.max_teams) {
+          throw new BadRequestException(
+            'Competition is full or awaiting payment from other participants',
+          );
+        }
+
+        const participant = await tx.participant.create({
+          data: {
+            competition_id: competitionId,
+            team_id: teamId,
+            type: ParticipantType.TEAM,
+            status:
+              competition.fee_type == 'FREE' ? 'ACCEPTED' : 'PENDING_PAYMENT',
+          },
+        });
+
+        if (competition.fee_type == 'PAID') {
+          await tx.payment.create({
+            data: {
+              participant_id: participant.id,
+              amount: competition.fee_amount,
+              status: 'PENDING',
+              created_at: new Date(),
+              user_id: userId,
+            },
+          });
+        }
+
+        return participant;
+      });
+
+      const response = plainToInstance(ParticipantResponseDto, participant, {
+        excludeExtraneousValues: true,
+      });
+
+      return {
+        success: true,
+        message:
+          competition.fee_type == 'FREE'
+            ? 'Team registered successfully'
+            : 'Team registered successfully, payment required',
+        data: response,
+      };
+    } catch (error: any) {
+      if (error.code == 'P2002') {
+        throw new BadRequestException('Already registered');
       }
-
-      return participant;
-    });
-
-    const response = plainToInstance(ParticipantResponseDto, participant, {
-      excludeExtraneousValues: true,
-    });
-
-    return {
-      success: true,
-      message:
-        competition.fee_amount && competition.fee_amount > 0
-          ? 'Team registered successfully, payment required'
-          : 'Team registered successfully',
-      data: response,
-    };
+      throw error;
+    }
   }
 
   async cancelParticipation(
@@ -266,7 +287,7 @@ export class ParticipantsService {
         (p) => p.status === 'PENDING',
       );
 
-      if (pendingPayment && participant.status === 'PENDING') {
+      if (pendingPayment && participant.status === 'PENDING_PAYMENT') {
         await this.prisma.$transaction([
           this.prisma.payment.delete({ where: { id: pendingPayment.id } }),
           this.prisma.participant.delete({ where: { id: participant.id } }),
