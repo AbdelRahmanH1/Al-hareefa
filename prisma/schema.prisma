@@ -14,6 +14,7 @@ enum ApprovalStatus {
   PENDING
   ACCEPTED
   REJECTED
+  PENDING_PAYMENT
 }
 
 enum Gender {
@@ -289,7 +290,7 @@ model Competition {
   organization_id     BigInt
   approval_status     ApprovalStatus @default(PENDING)
   fee_type            FeeType
-  fee_amount          Float?
+  fee_amount          Float @default(0)
   is_fee_per_person   Boolean? @default(false)   
   winner_participant_id BigInt?  
   min_age             Int
@@ -425,7 +426,7 @@ model Payment {
   user_id         BigInt
   user            User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  amount          Float
+  amount          Float @default(0)
   currency        String? @default("EGP")
   method          String?
   created_at      DateTime @default(now())

@@ -12,9 +12,12 @@ import { BookingModule } from './modules/booking/booking.module';
 import { PaymentsService } from './modules/payments/payments.service';
 import { PaymentsController } from './modules/payments/payments.controller';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { HttpModule } from '@nestjs/axios';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     TeamsModule,
@@ -23,6 +26,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     ServicesModule,
     BookingModule,
     PaymentsModule,
+    HttpModule,
   ],
   controllers: [ServicesController, PaymentsController],
   providers: [ServicesService, PaymentsService],

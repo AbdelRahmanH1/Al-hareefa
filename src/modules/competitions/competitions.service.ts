@@ -63,7 +63,7 @@ export class CompetitionsService {
         venue_address: data.venue_address,
         venue_city: data.venue_city,
         fee_type: fee_type,
-        fee_amount: data.fee_amount ?? null,
+        fee_amount: data.fee_amount,
         min_age: data.min_age ?? 7,
         max_age: data.max_age ?? 35,
         max_teams: data.max_teams ?? null,

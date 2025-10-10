@@ -10,10 +10,24 @@ import { StageService } from './stage/stage.service';
 import { StageController } from './stage/stage.controller';
 import { MatchesController } from './matches/matches.controller';
 import { MatchesService } from './matches/matches.service';
+import { CleanUnpaidParticipantsCron } from './participants/cron/clean-unpaid.participants.cron';
 
 @Module({
   imports: [PrismaModule],
-  providers: [CompetitionsService, ParticipantsService, GroupsService, StageService, MatchesService],
-  controllers: [CompetitionsController, ParticipantsController, GroupsController, StageController, MatchesController],
+  providers: [
+    CompetitionsService,
+    ParticipantsService,
+    GroupsService,
+    StageService,
+    MatchesService,
+    CleanUnpaidParticipantsCron,
+  ],
+  controllers: [
+    CompetitionsController,
+    ParticipantsController,
+    GroupsController,
+    StageController,
+    MatchesController,
+  ],
 })
 export class CompetitionsModule {}

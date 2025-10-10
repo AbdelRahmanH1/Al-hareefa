@@ -230,9 +230,14 @@ export class AuthService {
   } */
 
   async firebase3(data: RegisterUserRequestDto) {
-    const decodedToken = await this.firebaseService.verifyIdToken(
-      data.firebase_token,
-    );
+    let decodedToken;
+    try {
+      decodedToken = await this.firebaseService.verifyIdToken(
+        data.firebase_token,
+      );
+    } catch (err) {
+      throw new BadRequestException('Invalid or expired Firebase token');
+    }
 
     if (decodedToken.uid !== data.firebase_id) {
       throw new BadRequestException(
@@ -277,6 +282,20 @@ export class AuthService {
 
     if (!data.profile) {
       throw new BadRequestException('Profile data is required for this role');
+    }
+
+    const existingPhoneUser = await this.prisma.user.findUnique({
+      where: { phone: data.phone },
+    });
+    if (existingPhoneUser) {
+      throw new BadRequestException('Phone number already in use');
+    }
+
+    const existingEmailUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existingEmailUser) {
+      throw new BadRequestException('Email already in use');
     }
 
     const newUser = await this.prisma.$transaction(async (tx) => {
