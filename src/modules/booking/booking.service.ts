@@ -113,7 +113,7 @@ export class BookingService {
       include: { service: true },
     });
 
-    bookings.length == 0 && new NotFoundException('No bookings found');
+    if (bookings.length === 0) throw new NotFoundException('No bookings found');
 
     const response = plainToInstance(
       BookingResponseDto,
@@ -185,9 +185,8 @@ export class BookingService {
           where: { id: bookingId },
           data: { status: 'CANCELED' },
         }),
-        this.prisma.payment.update({
+        this.prisma.payment.delete({
           where: { id: pendingPayment.id },
-          data: { status: 'CANCELED' },
         }),
       ]);
 
