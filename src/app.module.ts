@@ -14,6 +14,7 @@ import { PaymentsController } from './modules/payments/payments.controller';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CleanUnpaidParticipantsCron } from './modules/competitions/participants/cron/clean-unpaid.participants.cron';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PaymentsModule,
     HttpModule,
   ],
-  controllers: [ServicesController, PaymentsController],
-  providers: [ServicesService, PaymentsService],
+  controllers: [],
+  providers: [CleanUnpaidParticipantsCron],
 })
 export class AppModule {}
