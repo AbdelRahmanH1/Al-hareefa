@@ -256,10 +256,13 @@ export class AuthService {
     });
 
     if (user) {
-      const profileExists =
-        (user.role === UserRole.PLAYER && !!user.playerProfile) ||
-        (user.role === UserRole.COACH && !!user.coachProfile) ||
-        (user.role === UserRole.ORGANIZATION && !!user.organizationProfile);
+      const profileMap = {
+        PLAYER: user.playerProfile,
+        COACH: user.coachProfile,
+        ORGANIZATION: user.organizationProfile,
+        ADMIN: user.adminProfile,
+      };
+      const profileExists = profileMap[user.role];
 
       if (!profileExists) {
         throw new BadRequestException('Profile not completed yet');
@@ -284,18 +287,16 @@ export class AuthService {
       throw new BadRequestException('Profile data is required for this role');
     }
 
-    const existingPhoneUser = await this.prisma.user.findUnique({
-      where: { phone: data.phone },
+    const existingUser = await this.prisma.user.findFirst({
+      where: { OR: [{ phone: data.phone }, { email: data.email }] },
     });
-    if (existingPhoneUser) {
-      throw new BadRequestException('Phone number already in use');
-    }
-
-    const existingEmailUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
-    });
-    if (existingEmailUser) {
-      throw new BadRequestException('Email already in use');
+    if (existingUser) {
+      if (existingUser.phone === data.phone) {
+        throw new BadRequestException('Phone number already in use');
+      }
+      if (existingUser.email === data.email) {
+        throw new BadRequestException('Email already in use');
+      }
     }
 
     const newUser = await this.prisma.$transaction(async (tx) => {
