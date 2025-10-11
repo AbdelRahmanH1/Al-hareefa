@@ -13,13 +13,13 @@ export class LoggerMiddleware implements NestMiddleware {
     res.on('finish', () => {
       const { statusCode } = res;
       const duration = Date.now() - start;
+      const clientIp = req.headers['x-forwarded-for'] || req.ip;
 
       let statusColor = '\x1b[32m';
       if (statusCode >= 400 && statusCode < 500) statusColor = '\x1b[33m';
       if (statusCode >= 500) statusColor = '\x1b[31m';
-
       console.log(
-        `${method} ${originalUrl} ${statusColor}${statusCode}\x1b[0m - ${duration}ms`,
+        ` [IP: ${clientIp}] ${method} ${originalUrl} ${statusColor}${statusCode}\x1b[0m - ${duration}ms`,
       );
     });
 
