@@ -10,7 +10,7 @@ export class CleanUnpaidParticipantsCron {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async handleUnpaidParticipants() {
-    const paymentWindowHours = 5;
+    /* const paymentWindowHours = 5;
     const cutoffTime = new Date(
       Date.now() - paymentWindowHours * 60 * 60 * 1000,
     );
@@ -41,6 +41,6 @@ export class CleanUnpaidParticipantsCron {
     }
     this.logger.log(
       `Cleaned ${expiredParticipants.length} unpaid participants`,
-    );
+    ); */
   }
 }
