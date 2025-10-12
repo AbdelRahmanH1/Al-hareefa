@@ -28,11 +28,12 @@ export class AuthenticationGuard implements CanActivate {
         userId: BigInt(decodedToken.userId),
         role: decodedToken.role as UserRole,
       };
-
       request.user = user;
       return true;
     } catch (error) {
-      console.error('Firebase Auth error:', error);
+      if (error.code === 'auth/user-not-found') {
+        throw new UnauthorizedException('User not found');
+      }
       throw new UnauthorizedException('Token invalid or revoked');
     }
   }

@@ -1,15 +1,10 @@
 import {
   BadRequestException,
-  HttpStatus,
   Injectable,
   NotFoundException,
-  Req,
-  UnauthorizedException,
 } from '@nestjs/common';
-import { GameType, Gender, OrganizationType, UserRole } from '@prisma/client';
+import { GameType, UserRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { RedisJwtService } from 'src/redis/redis-jwt.service';
-import { jwtConfig } from 'src/config/JwtConfig';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ResponseDto } from 'src/shared/dto/response.dto';
@@ -21,6 +16,8 @@ import { CreateCoachProfileRequestDto } from './dto/request/createCoach-request.
 import { CreateOrganizationProfileRequestDto } from './dto/request/CreateOrganization-request.dto';
 import { FirebaseService } from './firebase/firebase.service';
 import { PrismaClient } from '@prisma/client/extension';
+import { ForgetPassowrdRequest } from './dto/request/Forget-passwor-request.dto';
+import { generateWhatsAppLink } from 'src/shared/helpers/whatsapp.helper.util';
 
 @Injectable()
 export class AuthService {
@@ -29,205 +26,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly firebaseService: FirebaseService,
   ) {}
-
-  /* async firebase(
-    firebaseId: string,
-  ): Promise<ResponseDto<FirebaseAuthResponseData>> {
-    const firebaseData =
-      await this.firebaseService.verifyFirebaseToken(firebaseId);
-    if (!firebaseData || !firebaseData.uid)
-      throw new UnauthorizedException('Invalid Firebase token');
-
-    const { uid, email, name, picture } = firebaseData;
-    let user = await this.prisma.user.findUnique({
-      where: { firebase_id: uid },
-    });
-
-    if (user && user.role) {
-      const token = this.jwtService.sign(
-        { userId: user.id, firebaseId: user.firebase_id, role: user.role },
-        { secret: jwtConfig.SECRET_KEY },
-      );
-      await this.redisService.saveToken(String(user.id), token);
-      return {
-        success: true,
-        message: 'User logged in successfully',
-        data: { token, needsProfileCompletion: !user.role },
-      };
-    }
-
-    if (!email) {
-      await this.firebaseService.deleteUser(uid);
-      throw new BadRequestException('Email is required');
-    }
-    user = await this.prisma.user.create({
-      data: {
-        firebase_id: uid,
-        full_name: name || 'new user',
-        email,
-        photo_url: picture || null,
-      },
-    });
-
-    const token = this.jwtService.sign(
-      { userId: user.id, firebaseId: user.firebase_id },
-      { secret: jwtConfig.SECRET_KEY },
-    );
-    await this.redisService.saveToken(String(user.id), token);
-    return {
-      success: true,
-      message: 'User registered successfully',
-      data: { needsProfileCompletion: true, userId: user.id, token: token },
-    };
-  }
-
-  async completeRegistration(
-    userId: bigint,
-    data: RegisterUserRequestDto,
-  ): Promise<ResponseDto<any>> {
-    const { birthDate, city, gender, phone, role } = data;
-
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-    if (user.role) throw new BadRequestException('Profile already completed');
-
-    let profile: any;
-    switch (role) {
-      case UserRole.PLAYER:
-        profile = await this.createPlayerProfile(
-          userId,
-          birthDate,
-          data.profile as CreatePlayerProfileRequestDto,
-        );
-        break;
-
-      case UserRole.COACH:
-        profile = await this.createCoachProfile(
-          userId,
-          data.profile as CreateCoachProfileRequestDto,
-        );
-        break;
-
-      case UserRole.ORGANIZATION:
-        profile = await this.createOrganizationProfile(
-          userId,
-          data.profile as CreateOrganizationProfileRequestDto,
-        );
-        break;
-      default:
-        throw new BadRequestException('Invalid role');
-    }
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { role, phone, city, gender, birth_date: new Date(birthDate) },
-    });
-
-    return {
-      success: true,
-      message: 'Profile completed successfully',
-      data: null,
-    };
-  } */
-
-  /*  async firebase2(data: RegisterUserRequestDto) {
-    const decodedToken = await this.firebaseService.verifyIdToken(
-      data.firebase_token,
-    );
-
-    if (decodedToken.uid !== data.firebase_id) {
-      throw new Error('Firebase token does not match firebase_id');
-    }
-
-    let user = await this.prisma.user.findUnique({
-      where: { firebase_id: data.firebase_id },
-      include: {
-        playerProfile: true,
-        coachProfile: true,
-        organizationProfile: true,
-        adminProfile: true,
-      },
-    });
-
-    if (user) {
-      const profileExists =
-        (user.role === UserRole.PLAYER && !!user.playerProfile) ||
-        (user.role === UserRole.COACH && !!user.coachProfile) ||
-        (user.role === UserRole.ORGANIZATION && !!user.organizationProfile);
-
-      if (!profileExists) {
-        throw new BadRequestException('Profile not completed yet');
-      }
-
-      const newToken = await this.firebaseService.createCustomToken(
-        user.firebase_id,
-        data.role,
-      );
-
-      return {
-        uid: user.firebase_id,
-        email: user.email,
-        role: user.role,
-        firebase_token: newToken,
-        message: 'User logged in successfully',
-      };
-    }
-    if (!data.profile) {
-      throw new BadRequestException('Profile data is required for this role');
-    }
-    const newuser = await this.prisma.user.create({
-      data: {
-        birth_date: new Date(data.birthDate),
-        firebase_id: data.firebase_id,
-        full_name: data.full_name,
-        email: data.email,
-        phone: data.phone,
-        role: data.role,
-        city: data.city,
-        gender: data.gender,
-        photo_url: data.photo_url || null,
-      },
-    });
-
-    switch (data.role) {
-      case UserRole.PLAYER:
-        await this.createPlayerProfile(
-          newuser.id,
-          data.birthDate,
-          data.profile as CreatePlayerProfileRequestDto,
-          
-        );
-        break;
-      case UserRole.COACH:
-        await this.createCoachProfile(
-          newuser.id,
-          data.profile as CreateCoachProfileRequestDto,
-        );
-        break;
-      case UserRole.ORGANIZATION:
-        await this.createOrganizationProfile(
-          newuser.id,
-          data.profile as CreateOrganizationProfileRequestDto,
-        
-        );
-        break;
-    }
-
-    await this.firebaseService.setCustomClaims(data.firebase_id, data.role);
-
-    const newToken = await this.firebaseService.createCustomToken(
-      data.firebase_id,
-      data.role,
-    );
-
-    return {
-      success: true,
-      message: 'User registered successfully',
-      data: {
-        token: newToken,
-      },
-    };
-  } */
 
   async firebase3(data: RegisterUserRequestDto) {
     let decodedToken;
@@ -431,65 +229,6 @@ export class AuthService {
     });
   }
 
-  async registerDummy() {
-    const user = await this.prisma.user.create({
-      data: {
-        firebase_id: 'fake_firebase_uid_1006',
-        full_name: 'Player4',
-        email: 'player4@example.com',
-        phone: '0213117251',
-        role: UserRole.PLAYER,
-        gender: Gender.MALE,
-        city: 'Alexandria',
-        birth_date: new Date('2020-01-01'),
-      },
-    });
-
-    const playerProfile = await this.prisma.playerProfile.create({
-      data: {
-        preferred_games: { set: [GameType.FOOTBALL] },
-        id: user.id,
-        userId: user.id,
-      },
-    });
-
-    /* const adminProfile = await this.prisma.adminProfile.create({
-      data: { user_id: user.id, id: user.id },
-    }); */
-
-    /* const OrganizationProfile = await this.prisma.organizationProfile.create({
-      data: {
-        owner_name: 'Ahmed',
-        id: user.id,
-        user_id: user.id,
-        type: OrganizationType.CLUB,
-        district: 'nothing',
-        street_address: 'nothing',
-      },
-    }); */
-
-    /* const coachProfile = await this.prisma.coachProfile.create({
-      data: { id: user.id, user_id: user.id },
-    }); */
-    return user;
-  }
-  /* async loginDummy() {
-    const user = await this.prisma.user.findUnique({
-      where: { email: 'player1@example.com' },
-    });
-
-    if (!user) throw new UnauthorizedException('User not found');
-
-    const token = this.jwtService.sign(
-      { userId: user.id, firebaseId: user.firebase_id, role: user.role },
-      { secret: jwtConfig.SECRET_KEY },
-    );
-
-    await this.redisService.saveToken(String(user.id), token);
-
-    return { message: 'User created successfully', token };
-  } */
-
   async getProfile(userId: bigint): Promise<ResponseDto<UserResponseDto>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -565,6 +304,113 @@ export class AuthService {
       success: true,
       message: 'Profile updated successfully',
       data: response,
+    };
+  }
+
+  async forgetPassowrd(
+    data: ForgetPassowrdRequest,
+  ): Promise<ResponseDto<string>> {
+    const { email } = data;
+    const userInDb = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (!userInDb) throw new BadRequestException('Email not found in db');
+    let link: string;
+    try {
+      link = await this.firebaseService.generateForgetPassword(data.email);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+    const whatsappLink = generateWhatsAppLink(
+      '01022419957',
+      `Click this link to resetpassword ${link}`,
+    );
+
+    return {
+      success: true,
+      message: 'link sent to your whatsapp',
+      data: whatsappLink,
+    };
+  }
+
+  async deleteAccount(userId: bigint) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        playerProfile: true,
+        coachProfile: true,
+        organizationProfile: true,
+        adminProfile: true,
+        notification: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.firebase_id) {
+      try {
+        await this.firebaseService.deleteUser(user.firebase_id);
+      } catch (err) {
+        console.log('Firebase deletion failed (maybe already deleted)', err);
+      }
+    }
+
+    const timestamp = Date.now();
+
+    const updates: any = {
+      full_name: `DeletedUser_${timestamp}`,
+      email: `deleted_${userId}_${timestamp}@example.com`,
+      phone: `000000${timestamp}`,
+      firebase_id: `deleted_${userId}_${timestamp}`,
+      is_active: false,
+    };
+
+    if (user.playerProfile) {
+      updates['playerProfile'] = {
+        update: {
+          guardianId: null,
+        },
+      };
+    }
+    if (user.coachProfile) {
+      updates['coachProfile'] = {
+        update: {
+          bio: null,
+          experience: null,
+        },
+      };
+    }
+    if (user.organizationProfile) {
+      updates['organizationProfile'] = {
+        update: {
+          owner_name: `DeletedOrg_${timestamp}`,
+          google_map_link: null,
+          street_address: null,
+          district: null,
+          address_description: null,
+        },
+      };
+    }
+    if (user.adminProfile) {
+      updates['adminProfile'] = {
+        update: {},
+      };
+    }
+
+    await this.prisma.notification.deleteMany({
+      where: { user_id: userId },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: updates,
+      });
+    });
+
+    return {
+      success: true,
+      message: 'Account deleted successfull',
     };
   }
 }

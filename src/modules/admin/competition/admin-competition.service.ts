@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApprovalStatus } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -70,7 +74,18 @@ export class CompetitionService {
     if (!competitions) {
       throw new NotFoundException('Competition not found');
     }
+    const now = new Date();
+    const startDate = new Date(competitions.start_date);
 
+    if (body.status === ApprovalStatus.ACCEPTED) {
+      const minAcceptTime = new Date(startDate.getTime() - 24 * 60 * 60 * 1000);
+
+      if (now > minAcceptTime) {
+        throw new BadRequestException(
+          'Competition must be accepted at least 24 hours before the start date',
+        );
+      }
+    }
     const updatedCom = await this.prisma.competition.update({
       where: { id },
       data: { approval_status: body.status },

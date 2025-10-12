@@ -55,4 +55,31 @@ export class FirebaseService {
     const claims = { userId: userId.toString(), role };
     return await this.app.auth().createCustomToken(firebaseId, claims);
   }
+
+  async generateForgetPassword(email: string) {
+    try {
+      const link = await this.app.auth().generatePasswordResetLink(email);
+      return link;
+    } catch (error) {
+      if (error.code == 'auth/internal-error') {
+        console.log('foire');
+
+        throw new Error('Email not found in firebase');
+      }
+      throw error;
+    }
+  }
+
+  async isUserExists(email: string): Promise<boolean> {
+    try {
+      await admin.auth().getUserByEmail(email);
+      return true;
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        return false;
+      } else {
+        throw error;
+      }
+    }
+  }
 }
