@@ -10,7 +10,6 @@ import { StageService } from './stage/stage.service';
 import { StageController } from './stage/stage.controller';
 import { MatchesController } from './matches/matches.controller';
 import { MatchesService } from './matches/matches.service';
-import { CleanUnpaidParticipantsCron } from './participants/cron/clean-unpaid.participants.cron';
 
 @Module({
   imports: [PrismaModule],
@@ -20,7 +19,6 @@ import { CleanUnpaidParticipantsCron } from './participants/cron/clean-unpaid.pa
     GroupsService,
     StageService,
     MatchesService,
-    CleanUnpaidParticipantsCron,
   ],
   controllers: [
     CompetitionsController,
