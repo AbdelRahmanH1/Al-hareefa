@@ -3,44 +3,56 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
-export class CleanUnpaidParticipantsCron {
-  private readonly logger = new Logger(CleanUnpaidParticipantsCron.name);
+export class CleanExpiredPaymentsCron {
+  private readonly logger = new Logger(CleanExpiredPaymentsCron.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
-  async handleUnpaidParticipants() {
-    /* const paymentWindowHours = 5;
-    const cutoffTime = new Date(
-      Date.now() - paymentWindowHours * 60 * 60 * 1000,
-    );
+  @Cron(CronExpression.EVERY_10_HOURS)
+  async handleExpiredPayments() {
+    const now = new Date();
 
-    const expiredParticipants = await this.prisma.participant.findMany({
+    const expiredPayments = await this.prisma.payment.findMany({
       where: {
-        status: 'PENDING_PAYMENT',
-        registered_at: {
-          lt: new Date(cutoffTime),
-        },
+        status: 'PENDING',
+        due_date: { lt: now },
       },
-      include: { payments: true },
+      include: {
+        participant: true,
+        booking: true,
+      },
     });
 
-    for (const participant of expiredParticipants) {
-      this.logger.log(`Cleaning unpaid participant ID: ${participant.id}`);
-
-      const pendingPayment = participant.payments.filter(
-        (p) => p.status == 'PENDING',
-      );
-
-      await this.prisma.$transaction([
-        ...pendingPayment.map((p) =>
-          this.prisma.payment.delete({ where: { id: p.id } }),
-        ),
-        this.prisma.participant.delete({ where: { id: participant.id } }),
-      ]);
+    if (expiredPayments.length === 0) {
+      return;
     }
-    this.logger.log(
-      `Cleaned ${expiredParticipants.length} unpaid participants`,
-    ); */
+
+    this.logger.verbose(
+      `Found ${expiredPayments.length} expired payments to clean.`,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const payment of expiredPayments) {
+        if (payment.participant) {
+          await tx.participant.delete({
+            where: { id: payment.participant.id },
+          });
+        }
+
+        if (payment.booking) {
+          await tx.playerBooking.delete({
+            where: { id: payment.booking.id },
+          });
+        }
+
+        await tx.payment.delete({
+          where: { id: payment.id },
+        });
+      }
+    });
+
+    this.logger.verbose(
+      `✅ Cleaned ${expiredPayments.length} expired payments and related records.`,
+    );
   }
 }
