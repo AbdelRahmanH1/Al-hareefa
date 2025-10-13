@@ -52,7 +52,7 @@ export class CompetitionsService {
     }
 
     const fee_type: FeeType =
-      data.fee_amount && data.fee_amount > 0 ? 'PAID' : 'FREE';
+      (data.fee_amount ?? 0) > 0 ? FeeType.PAID : FeeType.FREE;
     const competition = await this.prisma.competition.create({
       data: {
         name: data.name,
@@ -67,9 +67,9 @@ export class CompetitionsService {
         min_age: data.min_age ?? 7,
         max_age: data.max_age ?? 35,
         max_teams: data.max_teams ?? null,
-        eliminationType: data.eliminationType ?? 'SINGLE_ELIMINATION',
-        hasGroupStage: data.eliminationType === 'KNOCKOUT',
-        approval_status: 'PENDING',
+        eliminationType: data.eliminationType ?? EliminationType.KNOCKOUT,
+        hasGroupStage: data.eliminationType === EliminationType.GROUP_STAGE,
+        approval_status: ApprovalStatus.PENDING_PAYMENT,
         organization_id: organizer_id,
       },
     });
@@ -144,15 +144,15 @@ export class CompetitionsService {
         'Cannot update a competition that has already started',
       );
 
-    if (data.start_date && competition.start_date) {
-      const newStartDate = new Date(data.start_date);
-      if (
-        newStartDate.getTime() !== new Date(competition.start_date).getTime()
-      ) {
-        throw new BadRequestException(
-          'You cannot change the start date after creation',
-        );
-      }
+    if (
+      data.start_date &&
+      competition.start_date &&
+      new Date(data.start_date).getTime() !==
+        new Date(competition.start_date).getTime()
+    ) {
+      throw new BadRequestException(
+        'You cannot change the start date after creation',
+      );
     }
 
     if (data.fee_amount !== undefined) {
@@ -193,9 +193,9 @@ export class CompetitionsService {
         fee_type,
         eliminationType: data.eliminationType ?? competition.eliminationType,
         hasGroupStage:
-          data.eliminationType === 'KNOCKOUT'
+          data.eliminationType === 'GROUP_STAGE'
             ? true
-            : data.eliminationType === 'SINGLE_ELIMINATION'
+            : data.eliminationType === 'KNOCKOUT'
               ? false
               : competition.hasGroupStage,
       },

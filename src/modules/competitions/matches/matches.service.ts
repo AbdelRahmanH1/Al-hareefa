@@ -33,7 +33,7 @@ export class MatchesService {
     competitionId: bigint,
     data: CreateMatchRequestDto,
   ): Promise<ResponseDto<AllMatchResponseDto>> {
-    const competition = await this.prisma.competition.findUnique({
+    const competition = await this.prisma.competition.findFirst({
       where: {
         id: competitionId,
         organization_id: userId,

@@ -7,6 +7,7 @@ import { GroupResponseDto } from './dto/response/GroupResponse.dto';
 import { GenerateGroupsDto } from './dto/request/GenerateGroups.dto';
 import { GroupParticipantDto } from './dto/response/GroupParticipantResponse.dto';
 import { GroupResponsePlainDto } from './dto/response/GroupResponsePlain.dto';
+import { EliminationType } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
@@ -17,7 +18,7 @@ export class GroupsService {
     competitionId: bigint,
     dto: CreateGroupManualDto,
   ): Promise<ResponseDto<GroupResponseDto>> {
-    const competition = await this.prisma.competition.findUnique({
+    const competition = await this.prisma.competition.findFirst({
       where: {
         id: competitionId,
         organization_id: userId,
@@ -26,7 +27,11 @@ export class GroupsService {
     });
     if (!competition) throw new Error('Competition not found');
 
-    // check participants already assigned to a group in this competition
+    if (competition.eliminationType !== EliminationType.GROUP_STAGE) {
+      throw new BadRequestException(
+        'Groups can only be created for group-stage competitions',
+      );
+    }
     const alreadyAssigned = await this.prisma.groupMembership.findMany({
       where: {
         participant_id: { in: dto.participantIds },
@@ -146,7 +151,7 @@ export class GroupsService {
       );
     }
 
-    const competition = await this.prisma.competition.findUnique({
+    const competition = await this.prisma.competition.findFirst({
       where: {
         id: competitionid,
         organization_id: userId,
@@ -156,6 +161,11 @@ export class GroupsService {
     });
     if (!competition) throw new Error('Competition not found');
 
+    if (competition.eliminationType !== 'GROUP_STAGE') {
+      throw new BadRequestException(
+        'Groups can only be generated for group-stage competitions',
+      );
+    }
     const participants = competition.participants.filter(
       (p) => p.status === 'ACCEPTED',
     );
