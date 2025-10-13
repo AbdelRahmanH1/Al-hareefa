@@ -7,9 +7,330 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ===============================
-// Enums
-// ===============================
+model User {
+  id                  BigInt               @id @default(autoincrement())
+  firebase_id         String               @unique
+  full_name           String
+  email               String               @unique
+  phone               String               @unique
+  gender              Gender
+  role                UserRole
+  city                String
+  birth_date          DateTime             @db.Date
+  photo_url           String?
+  is_active           Boolean              @default(true)
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+  adminProfile        AdminProfile?
+  coachProfile        CoachProfile?
+  multimedia          Multimedia[]
+  notification        Notification[]
+  organizationProfile OrganizationProfile?
+  payments            Payment[]
+  playerProfile       PlayerProfile?
+  created_teams       Team[]               @relation("CreatedTeams")
+  send_invites        TeamInvite[]         @relation("InvitedByUser")
+  received_invites    TeamInvite[]         @relation("InvitedUser")
+  team_memberships    TeamMember[]
+}
+
+model PlayerProfile {
+  id              BigInt          @id
+  userId          BigInt          @unique
+  preferred_games GameType[]
+  guardianId      BigInt?
+  created_at      DateTime        @default(now())
+  participants    Participant[]
+  bookings        PlayerBooking[]
+  guardian        Guardian?       @relation(fields: [guardianId], references: [id])
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Guardian {
+  id         BigInt          @id @default(autoincrement())
+  full_name  String
+  email      String          @unique
+  phone      String          @unique
+  relation   Relation        @default(FATHER)
+  created_at DateTime        @default(now())
+  players    PlayerProfile[]
+}
+
+model CoachProfile {
+  id         BigInt         @id
+  user_id    BigInt         @unique
+  bio        String?
+  experience String?
+  created_at DateTime       @default(now())
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  services   CoachService[]
+}
+
+model CoachService {
+  id          BigInt          @id @default(autoincrement())
+  coach_id    BigInt
+  title       String
+  description String?
+  price       Float?          @default(0)
+  duration    Int?
+  created_at  DateTime        @default(now())
+  coach       CoachProfile    @relation(fields: [coach_id], references: [id], onDelete: Cascade)
+  bookings    PlayerBooking[]
+}
+
+model PlayerBooking {
+  id        BigInt        @id @default(autoincrement())
+  playerId  BigInt
+  serviceId BigInt
+  status    BookingStatus @default(REQUESTED)
+  price     Float?        @default(0)
+  booked_at DateTime      @default(now())
+  start_at  DateTime?
+  end_at    DateTime?
+  notes     String?
+  payments  Payment[]
+  player    PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  service   CoachService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model Team {
+  id              BigInt        @id @default(autoincrement())
+  name            String        @unique
+  logo            String?
+  game            GameType
+  created_by_id   BigInt?
+  created_by_role UserRole
+  created_at      DateTime      @default(now())
+  is_deleted      Boolean       @default(false)
+  participants    Participant[]
+  created_by      User?         @relation("CreatedTeams", fields: [created_by_id], references: [id])
+  team_invites    TeamInvite[]
+  members         TeamMember[]
+}
+
+model TeamInvite {
+  id            BigInt         @id @default(autoincrement())
+  team_id       BigInt
+  invited_id    BigInt
+  invited_role  UserRole
+  invited_email String?
+  invited_by_id BigInt
+  status        ApprovalStatus @default(PENDING)
+  created_at    DateTime       @default(now())
+  expires_at    DateTime?
+  invited_by    User           @relation("InvitedByUser", fields: [invited_by_id], references: [id], onDelete: Cascade)
+  invited       User           @relation("InvitedUser", fields: [invited_id], references: [id], onDelete: Cascade)
+  team          Team           @relation(fields: [team_id], references: [id], onDelete: Cascade)
+}
+
+model TeamMember {
+  teamId      BigInt
+  userId      BigInt
+  roleInTeam  TeamMemberRole @default(PLAYER)
+  invitedAt   DateTime       @default(now())
+  respondedAt DateTime?
+  team        Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+}
+
+model CompetitionType {
+  id                  BigInt        @id @default(autoincrement())
+  name                String
+  rules               String
+  sport               GameType
+  createdByAdmin      BigInt?
+  min_player_per_team Int
+  max_player_per_team Int
+  created_at          DateTime      @default(now())
+  competitions        Competition[]
+}
+
+model Competition {
+  id                    BigInt              @id @default(autoincrement())
+  name                  String
+  typeId                BigInt
+  start_date            DateTime
+  end_date              DateTime
+  venue_name            String
+  venue_address         String
+  venue_city            String
+  organization_id       BigInt
+  approval_status       ApprovalStatus      @default(PENDING)
+  fee_type              FeeType
+  fee_amount            Float               @default(0)
+  is_fee_per_person     Boolean?            @default(false)
+  winner_participant_id BigInt?
+  min_age               Int
+  max_age               Int
+  max_teams             Int?
+  hasGroupStage         Boolean             @default(false)
+  eliminationType       EliminationType     @default(KNOCKOUT)
+  created_at            DateTime            @default(now())
+  organization          OrganizationProfile @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  type                  CompetitionType     @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  groups                CompetitionGroup[]
+  matches               Match[]
+  multimedia            Multimedia[]
+  participants          Participant[]
+}
+
+model Participant {
+  id                    BigInt            @id @default(autoincrement())
+  competition_id        BigInt
+  type                  ParticipantType
+  team_id               BigInt?
+  player_id             BigInt?
+  registered_at         DateTime          @default(now())
+  confirmed_at          DateTime?
+  qrCode                String?
+  payment_required      Float?
+  status                ApprovalStatus    @default(PENDING)
+  group_memberships     GroupMembership[]
+  standing              GroupStanding[]
+  match_as_participant1 Match[]           @relation("MatchParticipant1")
+  match_as_participant2 Match[]           @relation("MatchParticipant2")
+  wonMatches            Match[]           @relation("MatchWinner")
+  competition           Competition       @relation(fields: [competition_id], references: [id], onDelete: Cascade)
+  player                PlayerProfile?    @relation(fields: [player_id], references: [id])
+  team                  Team?             @relation(fields: [team_id], references: [id])
+  payments              Payment[]
+
+  @@unique([competition_id, team_id])
+  @@unique([competition_id, player_id])
+}
+
+model CompetitionGroup {
+  id             BigInt            @id @default(autoincrement())
+  competition_id BigInt
+  name           String
+  competition    Competition       @relation(fields: [competition_id], references: [id], onDelete: Cascade)
+  members        GroupMembership[]
+  standing       GroupStanding[]
+  matches        Match[]
+}
+
+model GroupMembership {
+  group_id       BigInt
+  participant_id BigInt
+  points         Int              @default(0)
+  wins           Int              @default(0)
+  losses         Int              @default(0)
+  group          CompetitionGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  participant    Participant      @relation(fields: [participant_id], references: [id], onDelete: Cascade)
+
+  @@id([group_id, participant_id])
+}
+
+model Match {
+  id                    BigInt            @id @default(autoincrement())
+  competition_id        BigInt
+  group_id              BigInt?
+  stage                 MatchStage?
+  status                MatchStatus       @default(SCHEDULED)
+  scheduled_at          DateTime?
+  venue_name            String?
+  venue_address         String?
+  venue_city            String?
+  round                 Int?
+  next_match_id         BigInt?
+  next_match_slot       Int?
+  participant1_id       BigInt
+  participant2_id       BigInt?
+  score_participant1    Int?              @default(0)
+  score_participant2    Int?              @default(0)
+  winner_participant_id BigInt?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  competition           Competition       @relation(fields: [competition_id], references: [id], onDelete: Cascade)
+  group                 CompetitionGroup? @relation(fields: [group_id], references: [id])
+  nextMatch             Match?            @relation("NextMatch", fields: [next_match_id], references: [id])
+  previousMatches       Match[]           @relation("NextMatch")
+  participant1          Participant       @relation("MatchParticipant1", fields: [participant1_id], references: [id], onDelete: Cascade)
+  participant2          Participant?      @relation("MatchParticipant2", fields: [participant2_id], references: [id])
+  winner                Participant?      @relation("MatchWinner", fields: [winner_participant_id], references: [id])
+}
+
+model GroupStanding {
+  id            BigInt           @id @default(autoincrement())
+  groupId       BigInt
+  participantId BigInt
+  points        Int              @default(0)
+  wins          Int              @default(0)
+  losses        Int              @default(0)
+  group         CompetitionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participant   Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, participantId])
+}
+
+model Payment {
+  id             BigInt         @id @default(autoincrement())
+  participant_id BigInt?
+  bookingId      BigInt?
+  user_id        BigInt
+  amount         Float          @default(0)
+  currency       String?        @default("EGP")
+  method         String?
+  created_at     DateTime       @default(now())
+  due_date       DateTime?
+  status         PaymentStatus  @default(PENDING)
+  payment_info   Json?
+  booking        PlayerBooking? @relation(fields: [bookingId], references: [id])
+  participant    Participant?   @relation(fields: [participant_id], references: [id])
+  user           User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model AdminProfile {
+  id                     BigInt                @id
+  user_id                BigInt                @unique
+  created_t              DateTime              @default(now())
+  user                   User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  approved_organizations OrganizationProfile[]
+}
+
+model OrganizationProfile {
+  id                  BigInt           @id
+  user_id             BigInt           @unique
+  owner_name          String
+  type                OrganizationType
+  district            String
+  street_address      String
+  address_description String?
+  google_map_link     String?
+  approval_status     ApprovalStatus   @default(PENDING)
+  approved_by         BigInt?
+  created_at          DateTime         @default(now())
+  competitions        Competition[]
+  admin               AdminProfile?    @relation(fields: [approved_by], references: [id])
+  user                User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Multimedia {
+  id             BigInt      @id @default(autoincrement())
+  competition_id BigInt
+  title          String
+  description    String?
+  media_type     MediaType
+  url            String
+  uploaded_by_id BigInt
+  created_at     DateTime    @default(now())
+  competition    Competition @relation(fields: [competition_id], references: [id], onDelete: Cascade)
+  uploaded_by    User        @relation(fields: [uploaded_by_id], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id             BigInt   @id @default(autoincrement())
+  user_id        BigInt
+  firebase_token String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, firebase_token])
+}
+
 enum ApprovalStatus {
   PENDING
   ACCEPTED
@@ -77,15 +398,15 @@ enum GameType {
 }
 
 enum EliminationType {
-  SINGLE_ELIMINATION
   KNOCKOUT
+  GROUP_STAGE
 }
 
 enum MatchStage {
   GROUP_STAGE
-  KNOCKOUT 
-  FINAL 
-  BYE 
+  KNOCKOUT
+  FINAL
+  BYE
 }
 
 enum TeamMemberRole {
@@ -113,380 +434,4 @@ enum MediaType {
   IMAGE
   VIDEO
   DOCUMENT
-}
-
-// ===============================
-// Users
-// ===============================
-model User {
-  id          BigInt   @id @default(autoincrement())
-  firebase_id String   @unique
-  full_name   String
-  email       String   @unique
-  phone       String   @unique
-  gender      Gender
-  role        UserRole
-  city        String
-  birth_date  DateTime @db.Date
-  photo_url String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  // profiles
-  playerProfile       PlayerProfile?
-  coachProfile        CoachProfile?
-  organizationProfile OrganizationProfile?
-  adminProfile        AdminProfile?
-
-  // relations
-  team_memberships    TeamMember[] 
-  created_teams       Team[] @relation("CreatedTeams")
-  payments            Payment[] 
-  multimedia          Multimedia[]
-  notification        Notification[]
-  send_invites        TeamInvite[] @relation("InvitedByUser")
-  received_invites    TeamInvite[] @relation("InvitedUser")
-}
-
-// ===============================
-// Players & Guardians
-// ===============================
-model PlayerProfile {
-  id              BigInt   @id
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          BigInt   @unique
-  preferred_games GameType[]
-  guardianId      BigInt?
-  guardian        Guardian? @relation(fields: [guardianId], references: [id], onDelete: SetNull)
-  created_at      DateTime @default(now())
-  bookings        PlayerBooking[]
-  participants    Participant[]
-}
-
-model Guardian {
-  id         BigInt @id @default(autoincrement())
-  full_name  String 
-  email      String @unique
-  phone      String @unique
-  relation   Relation @default(FATHER)
-  created_at DateTime @default(now())
-  players    PlayerProfile[]
-}
-
-// ===============================
-// Coaches & Services
-// ===============================
-model CoachProfile {
-  id          BigInt @id
-  user        User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_id     BigInt @unique
-  bio         String?
-  experience  String?
-  created_at  DateTime @default(now())
-  services    CoachService[]
-}
-
-model CoachService {
-  id          BigInt @id @default(autoincrement())
-  coach       CoachProfile @relation(fields: [coach_id], references: [id], onDelete: Cascade)
-  coach_id    BigInt
-  title       String
-  description String?
-  price       Float? @default(0)
-  duration    Int?
-  created_at  DateTime @default(now())
-  bookings    PlayerBooking[]
-}
-
-model PlayerBooking {
-  id            BigInt @id @default(autoincrement())
-  player        PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  playerId      BigInt
-  service       CoachService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId     BigInt
-  status        BookingStatus @default(REQUESTED)
-  price         Float? @default(0)
-  booked_at     DateTime @default(now())
-  start_at      DateTime?   //
-  end_at        DateTime?   
-  notes         String?
-  payments      Payment[]
-}
-
-
-// ===============================
-// Teams
-// ===============================
-model Team {
-  id            BigInt @id @default(autoincrement())
-  name          String @unique
-  logo          String?
-  game          GameType
-  created_by    User? @relation("CreatedTeams", fields: [created_by_id], references: [id])
-  created_by_id BigInt?
-  created_by_role UserRole
-  created_at    DateTime @default(now())
-  is_deleted    Boolean @default(false)
-
-  members       TeamMember[]
-  team_invites  TeamInvite[]
-  participants  Participant[]
-}
-
-model TeamInvite {
-  id             BigInt   @id @default(autoincrement())
-  team           Team     @relation(fields: [team_id], references: [id], onDelete: Cascade)
-  team_id        BigInt
-  invited        User     @relation("InvitedUser", fields: [invited_id], references: [id], onDelete: Cascade)
-  invited_id     BigInt
-  invited_role   UserRole 
-  invited_email  String?
-  invited_by     User     @relation("InvitedByUser", fields: [invited_by_id], references: [id], onDelete: Cascade)
-  invited_by_id  BigInt
-  status         ApprovalStatus @default(PENDING)
-  created_at     DateTime @default(now())
-  expires_at     DateTime?
-}
-
-model TeamMember {
-  teamId       BigInt
-  userId       BigInt
-  roleInTeam   TeamMemberRole @default(PLAYER)
-  invitedAt    DateTime @default(now())
-  respondedAt  DateTime?
-  team         Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([teamId, userId])
-}
-
-// ===============================
-// Competitions
-// ===============================
-model CompetitionType {
-  id                  BigInt @id @default(autoincrement())
-  name                String
-  rules               String
-  sport               GameType
-  createdByAdmin      BigInt?
-  min_player_per_team Int
-  max_player_per_team Int
-  competitions        Competition[]
-  created_at          DateTime @default(now())
-}
-
-model Competition {
-  id                  BigInt @id @default(autoincrement())
-  name                String
-  type                CompetitionType @relation(fields: [typeId], references: [id], onDelete: Cascade)
-  typeId              BigInt
-  start_date          DateTime
-  end_date            DateTime
-  venue_name          String
-  venue_address       String
-  venue_city          String
-  organization        OrganizationProfile @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  organization_id     BigInt
-  approval_status     ApprovalStatus @default(PENDING)
-  fee_type            FeeType
-  fee_amount          Float @default(0)
-  is_fee_per_person   Boolean? @default(false)   
-  winner_participant_id BigInt?  
-  min_age             Int
-  max_age             Int
-  max_teams           Int?
-  hasGroupStage       Boolean @default(false)
-  eliminationType     EliminationType @default(SINGLE_ELIMINATION)
-  created_at          DateTime @default(now())
-  participants        Participant[]
-  matches             Match[]
-  groups              CompetitionGroup[]
-  multimedia          Multimedia[]
-}
-
-model Participant {
-  id           BigInt @id @default(autoincrement())
-  competition  Competition @relation(fields: [competition_id], references: [id], onDelete: Cascade)
-  competition_id BigInt
-  type         ParticipantType
-  team         Team? @relation(fields: [team_id], references: [id], onDelete: SetNull)
-  team_id      BigInt?
-  player       PlayerProfile? @relation(fields: [player_id], references: [id], onDelete: SetNull) 
-  player_id    BigInt?
-  registered_at DateTime @default(now())
-  confirmed_at DateTime? 
-  qrCode       String?
-  payment_required Float?
-  status       ApprovalStatus @default(PENDING)
-
-  wonMatches   Match[] @relation("MatchWinner")
-  group_memberships GroupMembership[]
-  match_as_participant1 Match[] @relation("MatchParticipant1")
-  match_as_participant2 Match[] @relation("MatchParticipant2")
-  payments     Payment[]
-  standing     GroupStanding[]
-
-  @@unique([competition_id, team_id])
-  @@unique([competition_id, player_id])
-}
-
-// ===============================
-// Competition Groups
-// ===============================
-model CompetitionGroup {
-  id             BigInt @id @default(autoincrement())
-  competition    Competition @relation(fields: [competition_id], references: [id], onDelete: Cascade)
-  competition_id BigInt
-  name           String
-  members        GroupMembership[]
-  matches        Match[]
-  standing       GroupStanding[]
-}
-
-model GroupMembership {
-  group_id      BigInt
-  participant_id BigInt
-  points        Int @default(0)
-  wins          Int @default(0)
-  losses        Int @default(0)
-
-  group        CompetitionGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  participant  Participant @relation(fields: [participant_id], references: [id], onDelete: Cascade)
-
-  @@id([group_id, participant_id])
-}
-
-// ===============================
-// Matches
-// ===============================
-model Match {
-  id           BigInt @id @default(autoincrement())
-  competition_id BigInt
-  competition    Competition @relation(fields: [competition_id], references: [id], onDelete: Cascade)
-
-  group_id BigInt?
-  group    CompetitionGroup? @relation(fields: [group_id], references: [id], onDelete: SetNull)
-
-  stage   MatchStage?
-  status  MatchStatus @default(SCHEDULED)
-
-  scheduled_at  DateTime?
-  venue_name    String?
-  venue_address String?
-  venue_city    String?
-
-  round          Int?
-  next_match_id  BigInt?
-  next_match_slot Int?
-
-  participant1_id BigInt
-  participant1    Participant @relation("MatchParticipant1", fields: [participant1_id], references: [id], onDelete: Cascade)
-
-  participant2_id BigInt?
-  participant2    Participant? @relation("MatchParticipant2", fields: [participant2_id], references: [id], onDelete: SetNull)
-
-  score_participant1 Int? @default(0)
-  score_participant2 Int? @default(0)
-
-  winner_participant_id BigInt?
-  winner Participant? @relation("MatchWinner", fields: [winner_participant_id], references: [id], onDelete: SetNull)
-
-  nextMatch      Match?   @relation("NextMatch", fields: [next_match_id], references: [id], onDelete: SetNull)
-  previousMatches Match[] @relation("NextMatch")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model GroupStanding {
-  id             BigInt    @id @default(autoincrement())
-  group          CompetitionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId        BigInt
-  participant    Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  participantId  BigInt
-  points         Int      @default(0)
-  wins           Int      @default(0)
-  losses         Int      @default(0)
-
-  @@unique([groupId, participantId])
-}
-
-// ===============================
-// Payments
-// ===============================
-model Payment {
-  id              BigInt @id @default(autoincrement())
-  participant_id  BigInt?
-  participant     Participant? @relation(fields: [participant_id], references: [id], onDelete: SetNull)
-
-  bookingId       BigInt?
-  booking         PlayerBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-
-  user_id         BigInt
-  user            User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  amount          Float @default(0)
-  currency        String? @default("EGP")
-  method          String?
-  created_at      DateTime @default(now())
-  due_date        DateTime?
-  status          PaymentStatus @default(PENDING)
-  payment_info    Json?
-}
-
-// ===============================
-// Admin & Organization
-// ===============================
-model AdminProfile {
-  id        BigInt @id
-  user      User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_id   BigInt @unique
-  created_t DateTime @default(now())
-  approved_organizations OrganizationProfile[]
-}
-
-model OrganizationProfile {
-  id             BigInt @id
-  user           User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_id        BigInt @unique
-  owner_name     String
-  type           OrganizationType
-  district       String
-  street_address String
-  address_description String?
-  google_map_link String?
-  approval_status ApprovalStatus @default(PENDING)
-  approved_by     BigInt?
-  admin           AdminProfile? @relation(fields: [approved_by], references: [id], onDelete: SetNull)
-  created_at      DateTime @default(now())
-  competitions    Competition[]
-}
-
-// ===============================
-// Multimedia & Notifications
-// ===============================
-model Multimedia {
-  id             BigInt       @id @default(autoincrement())
-  competition    Competition   @relation(fields: [competition_id], references: [id], onDelete: Cascade)
-  competition_id BigInt
-  title          String
-  description    String?
-  media_type     MediaType
-  url            String
-  uploaded_by_id BigInt
-  uploaded_by    User          @relation(fields: [uploaded_by_id], references: [id], onDelete: Cascade)
-  created_at     DateTime      @default(now())
-}
-
-
-model Notification {
-  id             BigInt   @id @default(autoincrement())
-  user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  user_id        BigInt
-  firebase_token String
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  @@unique([user_id, firebase_token])
 }

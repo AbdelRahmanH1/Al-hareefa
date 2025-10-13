@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
+CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'PENDING_PAYMENT');
 
 -- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
@@ -29,7 +29,7 @@ CREATE TYPE "Relation" AS ENUM ('FATHER', 'MOTHER', 'OTHER');
 CREATE TYPE "GameType" AS ENUM ('FOOTBALL', 'BASKETBALL', 'HANDBALL', 'PLAYSTATION');
 
 -- CreateEnum
-CREATE TYPE "EliminationType" AS ENUM ('SINGLE_ELIMINATION', 'KNOCKOUT');
+CREATE TYPE "EliminationType" AS ENUM ('KNOCKOUT', 'GROUP_STAGE');
 
 -- CreateEnum
 CREATE TYPE "MatchStage" AS ENUM ('GROUP_STAGE', 'KNOCKOUT', 'FINAL', 'BYE');
@@ -60,6 +60,7 @@ CREATE TABLE "User" (
     "role" "UserRole" NOT NULL,
     "city" TEXT NOT NULL,
     "birth_date" DATE NOT NULL,
+    "photo_url" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -122,7 +123,8 @@ CREATE TABLE "PlayerBooking" (
     "status" "BookingStatus" NOT NULL DEFAULT 'REQUESTED',
     "price" DOUBLE PRECISION DEFAULT 0,
     "booked_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "scheduled_at" TIMESTAMP(3),
+    "start_at" TIMESTAMP(3),
+    "end_at" TIMESTAMP(3),
     "notes" TEXT,
 
     CONSTRAINT "PlayerBooking_pkey" PRIMARY KEY ("id")
@@ -160,12 +162,12 @@ CREATE TABLE "TeamInvite" (
 -- CreateTable
 CREATE TABLE "TeamMember" (
     "teamId" BIGINT NOT NULL,
-    "playerId" BIGINT NOT NULL,
+    "userId" BIGINT NOT NULL,
     "roleInTeam" "TeamMemberRole" NOT NULL DEFAULT 'PLAYER',
     "invitedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "respondedAt" TIMESTAMP(3),
 
-    CONSTRAINT "TeamMember_pkey" PRIMARY KEY ("teamId","playerId")
+    CONSTRAINT "TeamMember_pkey" PRIMARY KEY ("teamId","userId")
 );
 
 -- CreateTable
@@ -195,14 +197,14 @@ CREATE TABLE "Competition" (
     "organization_id" BIGINT NOT NULL,
     "approval_status" "ApprovalStatus" NOT NULL DEFAULT 'PENDING',
     "fee_type" "FeeType" NOT NULL,
-    "fee_amount" DOUBLE PRECISION,
+    "fee_amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "is_fee_per_person" BOOLEAN DEFAULT false,
     "winner_participant_id" BIGINT,
     "min_age" INTEGER NOT NULL,
     "max_age" INTEGER NOT NULL,
     "max_teams" INTEGER,
     "hasGroupStage" BOOLEAN NOT NULL DEFAULT false,
-    "eliminationType" "EliminationType" NOT NULL DEFAULT 'SINGLE_ELIMINATION',
+    "eliminationType" "EliminationType" NOT NULL DEFAULT 'KNOCKOUT',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Competition_pkey" PRIMARY KEY ("id")
@@ -287,7 +289,7 @@ CREATE TABLE "Payment" (
     "participant_id" BIGINT,
     "bookingId" BIGINT,
     "user_id" BIGINT NOT NULL,
-    "amount" DOUBLE PRECISION NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "currency" TEXT DEFAULT 'EGP',
     "method" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -327,8 +329,7 @@ CREATE TABLE "OrganizationProfile" (
 -- CreateTable
 CREATE TABLE "Multimedia" (
     "id" BIGSERIAL NOT NULL,
-    "competition_id" BIGINT,
-    "team_id" BIGINT,
+    "competition_id" BIGINT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "media_type" "MediaType" NOT NULL,
@@ -402,34 +403,34 @@ ALTER TABLE "PlayerProfile" ADD CONSTRAINT "PlayerProfile_guardianId_fkey" FOREI
 ALTER TABLE "CoachProfile" ADD CONSTRAINT "CoachProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CoachService" ADD CONSTRAINT "CoachService_coach_id_fkey" FOREIGN KEY ("coach_id") REFERENCES "CoachProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CoachService" ADD CONSTRAINT "CoachService_coach_id_fkey" FOREIGN KEY ("coach_id") REFERENCES "CoachProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PlayerBooking" ADD CONSTRAINT "PlayerBooking_playerId_fkey" FOREIGN KEY ("playerId") REFERENCES "PlayerProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PlayerBooking" ADD CONSTRAINT "PlayerBooking_playerId_fkey" FOREIGN KEY ("playerId") REFERENCES "PlayerProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PlayerBooking" ADD CONSTRAINT "PlayerBooking_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "CoachService"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PlayerBooking" ADD CONSTRAINT "PlayerBooking_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "CoachService"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Team" ADD CONSTRAINT "Team_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "Team"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "Team"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_invited_id_fkey" FOREIGN KEY ("invited_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_invited_id_fkey" FOREIGN KEY ("invited_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_invited_by_id_fkey" FOREIGN KEY ("invited_by_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TeamInvite" ADD CONSTRAINT "TeamInvite_invited_by_id_fkey" FOREIGN KEY ("invited_by_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "TeamMember" ADD CONSTRAINT "TeamMember_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TeamMember" ADD CONSTRAINT "TeamMember_playerId_fkey" FOREIGN KEY ("playerId") REFERENCES "PlayerProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "TeamMember" ADD CONSTRAINT "TeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Competition" ADD CONSTRAINT "Competition_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "CompetitionType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Competition" ADD CONSTRAINT "Competition_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "CompetitionType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Competition" ADD CONSTRAINT "Competition_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "OrganizationProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -444,13 +445,13 @@ ALTER TABLE "Participant" ADD CONSTRAINT "Participant_team_id_fkey" FOREIGN KEY 
 ALTER TABLE "Participant" ADD CONSTRAINT "Participant_player_id_fkey" FOREIGN KEY ("player_id") REFERENCES "PlayerProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CompetitionGroup" ADD CONSTRAINT "CompetitionGroup_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "Competition"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CompetitionGroup" ADD CONSTRAINT "CompetitionGroup_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "Competition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GroupMembership" ADD CONSTRAINT "GroupMembership_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "CompetitionGroup"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GroupMembership" ADD CONSTRAINT "GroupMembership_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "CompetitionGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GroupMembership" ADD CONSTRAINT "GroupMembership_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "Participant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GroupMembership" ADD CONSTRAINT "GroupMembership_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "Participant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Match" ADD CONSTRAINT "Match_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "Competition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -471,10 +472,10 @@ ALTER TABLE "Match" ADD CONSTRAINT "Match_winner_participant_id_fkey" FOREIGN KE
 ALTER TABLE "Match" ADD CONSTRAINT "Match_next_match_id_fkey" FOREIGN KEY ("next_match_id") REFERENCES "Match"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GroupStanding" ADD CONSTRAINT "GroupStanding_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "CompetitionGroup"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GroupStanding" ADD CONSTRAINT "GroupStanding_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "CompetitionGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GroupStanding" ADD CONSTRAINT "GroupStanding_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "Participant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GroupStanding" ADD CONSTRAINT "GroupStanding_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "Participant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "Participant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -483,25 +484,22 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_participant_id_fkey" FOREIGN KEY (
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "PlayerBooking"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payment" ADD CONSTRAINT "Payment_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AdminProfile" ADD CONSTRAINT "AdminProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AdminProfile" ADD CONSTRAINT "AdminProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "OrganizationProfile" ADD CONSTRAINT "OrganizationProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "OrganizationProfile" ADD CONSTRAINT "OrganizationProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrganizationProfile" ADD CONSTRAINT "OrganizationProfile_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "AdminProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Multimedia" ADD CONSTRAINT "Multimedia_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "Competition"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Multimedia" ADD CONSTRAINT "Multimedia_competition_id_fkey" FOREIGN KEY ("competition_id") REFERENCES "Competition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Multimedia" ADD CONSTRAINT "Multimedia_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Multimedia" ADD CONSTRAINT "Multimedia_uploaded_by_id_fkey" FOREIGN KEY ("uploaded_by_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Multimedia" ADD CONSTRAINT "Multimedia_uploaded_by_id_fkey" FOREIGN KEY ("uploaded_by_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Notification" ADD CONSTRAINT "Notification_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
