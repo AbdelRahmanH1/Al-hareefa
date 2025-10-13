@@ -28,21 +28,6 @@ export class AuthService {
   ) {}
 
   async firebase3(data: RegisterUserRequestDto) {
-    let decodedToken;
-    try {
-      decodedToken = await this.firebaseService.verifyIdToken(
-        data.firebase_token,
-      );
-    } catch (err) {
-      throw new BadRequestException('Invalid or expired Firebase token');
-    }
-
-    if (decodedToken.uid !== data.firebase_id) {
-      throw new BadRequestException(
-        'Firebase token does not match firebase_id',
-      );
-    }
-
     let user = await this.prisma.user.findUnique({
       where: { firebase_id: data.firebase_id },
       include: {

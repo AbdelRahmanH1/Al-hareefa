@@ -42,7 +42,7 @@ export const buildPaymentData = (input: PaymentDataInput) => {
     },
     special_reference: input.payment_id.toString(),
     expiration: 18000,
-    // notification_url: PAYMOB_CONFIG.NOTIFICATION_URL,
+    notification_url: PAYMOB_CONFIG.NOTIFICATION_URL,
     // redirection_url: PAYMOB_CONFIG.REDIRECTION_URL,
   };
 };
@@ -61,12 +61,30 @@ export const createPaymentIntention = async (
     const response = await axiosInstance.post(url, paymentData, { headers });
     return response.data;
   } catch (error: any) {
-    const message =
-      typeof error.response?.data === 'object'
-        ? JSON.stringify(error.response.data)
-        : error.response?.data || error.message;
+    const respData = error.response?.data;
+    const statusCode = error.response?.status;
 
-    throw new Error(`Failed to create payment intention: ${message}`);
+    if (statusCode === 403) {
+      throw new Error('Authentication failed with Paymob. Check your API key.');
+    }
+
+    if (statusCode === 406 || respData?.error_code === '406') {
+      throw new Error('Invalid input provided to Paymob.');
+    }
+
+    if (respData?.error_code === '1705') {
+      throw new Error(
+        'A transaction with the same details is already in progress.',
+      );
+    }
+
+    if (statusCode === 404) {
+      throw new Error('Endpoint not found on Paymob.');
+    }
+
+    throw new Error(
+      `Failed to create payment intention: ${respData?.message || error.message || 'Unknown error'}`,
+    );
   }
 };
 

@@ -5,92 +5,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ResponseDto } from 'src/shared/dto/response.dto';
 import { PaymentResponse } from './dto/response/PaymentResponse.dto';
 import { PaymentDataInput } from './Interface/PaymentDataInput';
-import {
-  buildPaymentData,
-  createPaymentIntention,
-  formatPaymentResponse,
-  processPayment,
-} from './payment.helper';
-import { PAYMOB_CONFIG } from './payyment.constants';
+import { formatPaymentResponse, processPayment } from './payment.helper';
 import { Prisma } from '@prisma/client';
+import { HmacService } from './Hmac.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly http: HttpService,
     private readonly prisma: PrismaService,
+    private readonly hmacService: HmacService,
   ) {}
-
-  /*  async createPaymentIntentionAndGetCheckoutLink1() {
-    const url = `${this.baseUrl}/v1/intention`;
-    const headers = {
-      Authorization: `Token ${this.secretKey}`,
-      'Content-Type': 'application/json',
-    };
-
-    const testPaymentData = {
-      amount: 1000,
-      currency: 'EGP',
-      payment_methods: [5352630, 5350788, 5350792],
-      items: [
-        {
-          name: 'Test Coach Service',
-          amount: 1000,
-          description: 'Payment for testing',
-          quantity: 1,
-        },
-      ],
-      customer: {
-        first_name: 'Test',
-        last_name: 'User',
-        email: 'test@example.com',
-        phone_number: '01010101010',
-      },
-      billing_data: {
-        apartment: '6',
-        first_name: 'Test',
-        last_name: 'User',
-        street: '123 Test St',
-        building: '1',
-        phone_number: '01010101010',
-        country: 'EGY',
-        email: 'test@example.com',
-        floor: '1',
-        state: 'Cairo',
-      },
-    };
-
-    try {
-      const response = await this.http.axiosRef.post(url, testPaymentData, {
-        headers,
-      });
-      const data = response.data;
-
-      const checkoutLink = `https://accept.paymob.com/unifiedcheckout/?publicKey=${this.publicKey}&clientSecret=${data.client_secret}`;
-
-      return {
-        success: true,
-        message: 'Payment intention created successfully',
-        data: {
-          intention_id: data.id,
-          client_secret: data.client_secret,
-          checkout_link: checkoutLink,
-          amount: testPaymentData.amount,
-          currency: testPaymentData.currency,
-        },
-      };
-    } catch (error) {
-      console.error(
-        '❌ Error creating payment intention:',
-        error.response?.data || error.message,
-      );
-      return {
-        success: false,
-        message: 'Failed to create payment intention',
-        error: error.response?.data || error.message,
-      };
-    }
-  } */
 
   async createPayment(userId: bigint, paymentId: bigint) {
     const payment = await this.prisma.payment.findFirst({
@@ -128,22 +53,16 @@ export class PaymentsService {
       payment.due_date &&
       payment.due_date > now
     ) {
-      const paymentInfo = payment.payment_info as {
-        intention_id: string;
-        client_secret: string;
-        checkout_link: string;
-      };
+      const result = formatPaymentResponse(
+        payment.payment_info,
+        payment.amount,
+        'EGP',
+      );
 
       return {
         success: true,
         message: 'Existing payment link is still valid',
-        data: {
-          intention_id: paymentInfo.intention_id,
-          client_secret: paymentInfo!.client_secret!,
-          checkout_link: paymentInfo!.checkout_link!,
-          amount: payment.amount,
-          currency: 'EGP',
-        },
+        data: { ...result.data },
       };
     }
 
@@ -206,7 +125,73 @@ export class PaymentsService {
       },
     });
 
-    return { success: true, message: '', data: result };
+    return { success: true, message: '', data: result.data };
+  }
+
+  async webhook(body: any, hmac: string) {
+    const secretKey = process.env.PAYMOB_HMAC_SECRET!;
+
+    const transactionData = body.obj;
+
+    const isValid = this.hmacService.verify(transactionData, hmac, secretKey);
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid HMAC');
+    }
+    const { pending, success, order } = body.obj;
+    const paymentId = BigInt(order.merchant_order_id);
+
+    if (!paymentId) {
+      throw new BadRequestException('Missing payment identifier');
+    }
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      select: {
+        id: true,
+        booking: true,
+        bookingId: true,
+        participant: true,
+        participant_id: true,
+      },
+    });
+
+    if (!payment) throw new BadRequestException('Payment not found');
+
+    if (!pending && success) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: paymentId },
+          data: { status: 'COMPLETED' },
+        });
+
+        if (payment.bookingId) {
+          await tx.playerBooking.update({
+            where: { id: payment.bookingId },
+            data: { status: 'CONFIRMED' },
+          });
+        } else if (payment.participant_id) {
+          await tx.participant.update({
+            where: { id: payment.participant_id },
+            data: { status: 'ACCEPTED' },
+          });
+        }
+      });
+    } else if (pending && !success) {
+      // not pay it yet
+    } else if (!pending && !success) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.delete({ where: { id: payment.id } });
+
+        if (payment.bookingId) {
+          await tx.playerBooking.delete({ where: { id: payment.bookingId } });
+        } else if (payment.participant_id) {
+          await tx.participant.delete({
+            where: { id: payment.participant_id },
+          });
+        }
+      });
+    }
+    return { message: 'Webhook processed successfully' };
   }
 
   async getPaymentsByUserId(
