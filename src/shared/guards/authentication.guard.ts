@@ -21,9 +21,13 @@ export class AuthenticationGuard implements CanActivate {
     if (!idToken) {
       throw new UnauthorizedException('Token missing or invalid');
     }
-
+    const startTime = Date.now();
     try {
       const decodedToken = await admin.auth().verifyIdToken(idToken, true);
+      const endTime = Date.now(); // <<< نهاية التوقيت
+      console.log(
+        `AuthenticationGuard: token verification took ${endTime - startTime} ms`,
+      );
       const user: UserPayload = {
         userId: BigInt(decodedToken.userId),
         role: decodedToken.role as UserRole,

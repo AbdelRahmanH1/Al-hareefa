@@ -52,7 +52,7 @@ export class AuthController {
     type: UserResponseWrapperDto,
   })
   async me(@Req() req: { user: UserPayload }) {
-    return this.authService.getProfile(req.user.userId);
+    return this.authService.getProfile(req.user.userId, req.user.role);
   }
 
   @Put('/')

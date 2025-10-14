@@ -23,127 +23,105 @@ import { generateWhatsAppLink } from 'src/shared/helpers/whatsapp.helper.util';
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
     private readonly firebaseService: FirebaseService,
   ) {}
 
   async firebase3(data: RegisterUserRequestDto) {
-    let user = await this.prisma.user.findUnique({
+    let newUser: any;
+
+    const existing = await this.prisma.user.findUnique({
       where: { firebase_id: data.firebase_id },
-      include: {
-        playerProfile: true,
-        coachProfile: true,
-        organizationProfile: true,
-        adminProfile: true,
-      },
     });
 
-    if (user) {
-      const profileMap = {
-        PLAYER: user.playerProfile,
-        COACH: user.coachProfile,
-        ORGANIZATION: user.organizationProfile,
-        ADMIN: user.adminProfile,
-      };
-      const profileExists = profileMap[user.role];
-
-      if (!profileExists) {
-        throw new BadRequestException('Profile not completed yet');
-      }
-
-      const newToken = await this.firebaseService.createCustomToken(
-        user.firebase_id,
-        user.id,
-        user.role,
+    if (existing) {
+      throw new BadRequestException(
+        'User with this Firebase ID already exists',
       );
-
-      return {
-        uid: user.firebase_id,
-        email: user.email,
-        role: user.role,
-        firebase_token: newToken,
-        message: 'User logged in successfully',
-      };
     }
 
-    if (!data.profile) {
+    if (!data.profile)
       throw new BadRequestException('Profile data is required for this role');
-    }
 
-    const existingUser = await this.prisma.user.findFirst({
-      where: { OR: [{ phone: data.phone }, { email: data.email }] },
-    });
-    if (existingUser) {
-      if (existingUser.phone === data.phone) {
-        throw new BadRequestException('Phone number already in use');
-      }
-      if (existingUser.email === data.email) {
-        throw new BadRequestException('Email already in use');
-      }
-    }
+    try {
+      newUser = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            birth_date: new Date(data.birthDate),
+            firebase_id: data.firebase_id,
+            full_name: data.full_name,
+            email: data.email,
+            phone: data.phone,
+            role: data.role,
+            city: data.city,
+            gender: data.gender,
+            photo_url: data.photo_url || null,
+          },
+        });
 
-    const newUser = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          birth_date: new Date(data.birthDate),
-          firebase_id: data.firebase_id,
-          full_name: data.full_name,
-          email: data.email,
-          phone: data.phone,
-          role: data.role,
-          city: data.city,
-          gender: data.gender,
-          photo_url: data.photo_url || null,
-        },
+        switch (data.role) {
+          case UserRole.PLAYER:
+            await this.createPlayerProfile(
+              createdUser.id,
+              data.birthDate,
+              data.profile as CreatePlayerProfileRequestDto,
+              tx,
+            );
+            break;
+          case UserRole.COACH:
+            await this.createCoachProfile(
+              createdUser.id,
+              data.profile as CreateCoachProfileRequestDto,
+              tx,
+            );
+            break;
+          case UserRole.ORGANIZATION:
+            await this.createOrganizationProfile(
+              createdUser.id,
+              data.profile as CreateOrganizationProfileRequestDto,
+              tx,
+            );
+            break;
+        }
+
+        return createdUser;
       });
 
-      switch (data.role) {
-        case UserRole.PLAYER:
-          await this.createPlayerProfile(
-            createdUser.id,
-            data.birthDate,
-            data.profile as CreatePlayerProfileRequestDto,
-            tx,
-          );
-          break;
-        case UserRole.COACH:
-          await this.createCoachProfile(
-            createdUser.id,
-            data.profile as CreateCoachProfileRequestDto,
-            tx,
-          );
-          break;
-        case UserRole.ORGANIZATION:
-          await this.createOrganizationProfile(
-            createdUser.id,
-            data.profile as CreateOrganizationProfileRequestDto,
-            tx,
-          );
-          break;
+      try {
+        await this.firebaseService.setCustomClaims(
+          newUser.firebase_id,
+          newUser.id,
+          newUser.role,
+        );
+
+        return {
+          success: true,
+          message: 'User registered successfully',
+          data: null,
+        };
+      } catch (firebaseError) {
+        await this.prisma.$transaction(async (tx) => {
+          if (newUser.role === UserRole.PLAYER)
+            await tx.playerProfile.deleteMany({
+              where: { userId: newUser.id },
+            });
+          if (newUser.role === UserRole.COACH)
+            await tx.coachProfile.deleteMany({
+              where: { user_id: newUser.id },
+            });
+          if (newUser.role === UserRole.ORGANIZATION)
+            await tx.organizationProfile.deleteMany({
+              where: { user_id: newUser.id },
+            });
+          await tx.user.delete({ where: { id: newUser.id } });
+        });
+
+        throw new BadRequestException(
+          `Failed to set Firebase token: ${firebaseError.message}`,
+        );
       }
-
-      return createdUser;
-    });
-
-    await this.firebaseService.setCustomClaims(
-      data.firebase_id,
-      newUser.id,
-      newUser.role,
-    );
-
-    const newToken = await this.firebaseService.createCustomToken(
-      newUser.firebase_id,
-      newUser.id,
-      newUser.role,
-    );
-
-    return {
-      success: true,
-      message: 'User registered successfully',
-      data: {
-        token: newToken,
-      },
-    };
+    } catch (error) {
+      throw error;
+    }
   }
 
   private async createPlayerProfile(
@@ -214,14 +192,17 @@ export class AuthService {
     });
   }
 
-  async getProfile(userId: bigint): Promise<ResponseDto<UserResponseDto>> {
+  async getProfile(
+    userId: bigint,
+    UserRole: UserRole,
+  ): Promise<ResponseDto<UserResponseDto>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        playerProfile: true,
-        organizationProfile: true,
-        coachProfile: true,
-        adminProfile: true,
+        playerProfile: UserRole == 'PLAYER',
+        organizationProfile: UserRole == 'ORGANIZATION',
+        coachProfile: UserRole == 'COACH',
+        adminProfile: UserRole == 'ADMIN',
       },
     });
     if (!user) throw new NotFoundException('User not found');
@@ -233,62 +214,82 @@ export class AuthService {
 
   async updateProfile(
     userId: bigint,
-    role: string,
+    role: UserRole,
     request: UpdateProfileDto,
-  ): Promise<ResponseDto<UserResponseDto>> {
+  ): Promise<ResponseDto<null>> {
     const { playerProfile, coachProfile, organizationProfile, user } = request;
-    const userData = user ? { ...user } : {};
 
-    let profileUpdate: any = {};
+    const userData = user
+      ? Object.fromEntries(
+          Object.entries(user).filter(([_, v]) => v !== undefined),
+        )
+      : {};
 
-    switch (role) {
-      case 'PLAYER':
-        if (playerProfile) {
-          profileUpdate = { playerProfile: { update: playerProfile } };
-        }
-        break;
+    const profileData = {
+      PLAYER: playerProfile
+        ? Object.fromEntries(
+            Object.entries(playerProfile).filter(([_, v]) => v !== undefined),
+          )
+        : null,
+      COACH: coachProfile
+        ? Object.fromEntries(
+            Object.entries(coachProfile).filter(([_, v]) => v !== undefined),
+          )
+        : null,
+      ORGANIZATION: organizationProfile
+        ? Object.fromEntries(
+            Object.entries(organizationProfile).filter(
+              ([_, v]) => v !== undefined,
+            ),
+          )
+        : null,
+    };
 
-      case 'COACH':
-        if (coachProfile) {
-          profileUpdate = { coachProfile: { update: coachProfile } };
-        }
-        break;
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userData).length) {
+        await tx.user.update({
+          where: { id: userId },
+          data: userData,
+        });
+      }
 
-      case 'ORGANIZATION':
-        if (organizationProfile) {
-          profileUpdate = {
-            organizationProfile: { update: organizationProfile },
-          };
-        }
-        break;
+      switch (role) {
+        case UserRole.PLAYER:
+          if (profileData.PLAYER) {
+            await tx.playerProfile.update({
+              where: { id: userId },
+              data: profileData.PLAYER,
+            });
+          }
+          break;
 
-      case 'ADMIN':
-        break;
+        case UserRole.COACH:
+          if (profileData.COACH) {
+            await tx.coachProfile.update({
+              where: { id: userId },
+              data: profileData.COACH,
+            });
+          }
+          break;
 
-      default:
-        throw new BadRequestException('Invalid role');
-    }
+        case UserRole.ORGANIZATION:
+          if (profileData.ORGANIZATION) {
+            await tx.organizationProfile.update({
+              where: { id: userId },
+              data: profileData.ORGANIZATION,
+            });
+          }
+          break;
 
-    const updateUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...userData,
-        ...profileUpdate,
-      },
-      include: {
-        playerProfile: true,
-        coachProfile: true,
-        organizationProfile: true,
-        adminProfile: true,
-      },
+        case UserRole.ADMIN:
+          break;
+      }
     });
-    const response = plainToInstance(UserResponseDto, updateUser, {
-      excludeExtraneousValues: true,
-    });
+
     return {
       success: true,
       message: 'Profile updated successfully',
-      data: response,
+      data: null,
     };
   }
 
