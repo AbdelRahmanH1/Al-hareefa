@@ -70,7 +70,9 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Profile updated successfully',
-    type: UserResponseWrapperDto,
+    schema: {
+      example: { success: true, message: 'User update successfully' },
+    },
   })
   async updateUser(
     @Req() req: { user: UserPayload },
