@@ -138,12 +138,12 @@ export class GroupsService {
   }
 
   async generateGroups(
-    competitionid: bigint,
+    competitionId: bigint,
     userId: bigint,
     dto: GenerateGroupsDto,
   ): Promise<ResponseDto<GroupResponsePlainDto[]>> {
     const existingGroups = await this.prisma.competitionGroup.findMany({
-      where: { competition_id: competitionid },
+      where: { competition_id: competitionId },
     });
     if (existingGroups.length > 0) {
       throw new BadRequestException(
@@ -153,26 +153,32 @@ export class GroupsService {
 
     const competition = await this.prisma.competition.findFirst({
       where: {
-        id: competitionid,
+        id: competitionId,
         organization_id: userId,
         approval_status: 'ACCEPTED',
       },
       include: { participants: true },
     });
-    if (!competition) throw new Error('Competition not found');
-
+    if (!competition) throw new BadRequestException('Competition not found');
     if (competition.eliminationType !== 'GROUP_STAGE') {
       throw new BadRequestException(
         'Groups can only be generated for group-stage competitions',
       );
     }
+
     const participants = competition.participants.filter(
       (p) => p.status === 'ACCEPTED',
     );
 
-    if (participants.length < dto.numberOfGroups * dto.participantsPerGroup) {
+    const totalSpots = dto.numberOfGroups * dto.participantsPerGroup;
+    if (participants.length < totalSpots) {
       throw new BadRequestException(
-        'Not enough participants to fill the groups',
+        `Not enough participants: ${participants.length} for ${totalSpots} spots`,
+      );
+    }
+    if (participants.length > totalSpots) {
+      throw new BadRequestException(
+        `Too many participants: ${participants.length} for ${totalSpots} spots`,
       );
     }
 
@@ -183,12 +189,11 @@ export class GroupsService {
       const group = await this.prisma.competitionGroup.create({
         data: {
           name: `Group ${String.fromCharCode(64 + i)}`,
-          competition_id: competitionid,
+          competition_id: competitionId,
         },
       });
 
       const groupMembers: { id: bigint }[] = [];
-
       for (
         let j = 0;
         j < dto.participantsPerGroup && index < shuffled.length;
@@ -204,12 +209,11 @@ export class GroupsService {
         groupMembers.push({ id: participant.id });
       }
 
-      // Generate round robin matches for this group
       for (let x = 0; x < groupMembers.length; x++) {
         for (let y = x + 1; y < groupMembers.length; y++) {
           await this.prisma.match.create({
             data: {
-              competition_id: competitionid,
+              competition_id: competitionId,
               group_id: group.id,
               participant1_id: groupMembers[x].id,
               participant2_id: groupMembers[y].id,
@@ -222,15 +226,12 @@ export class GroupsService {
     }
 
     const groups = await this.prisma.competitionGroup.findMany({
-      where: { competition_id: competitionid },
+      where: { competition_id: competitionId },
       include: {
         members: {
           include: {
             participant: {
-              include: {
-                team: true,
-                player: { include: { user: true } },
-              },
+              include: { team: true, player: { include: { user: true } } },
             },
           },
         },

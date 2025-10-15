@@ -1,7 +1,7 @@
-import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 interface UpdateGroupStandingParams {
-  prisma: PrismaService;
+  prisma: Prisma.TransactionClient;
   matchId: bigint;
   scoreParticipant1: number;
   scoreParticipant2: number;

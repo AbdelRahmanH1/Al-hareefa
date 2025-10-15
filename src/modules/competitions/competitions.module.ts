@@ -10,6 +10,8 @@ import { StageService } from './stage/stage.service';
 import { StageController } from './stage/stage.controller';
 import { MatchesController } from './matches/matches.controller';
 import { MatchesService } from './matches/matches.service';
+import { KnockoutService } from './matches/knockout.service';
+import { ResultService } from './matches/results.service';
 
 @Module({
   imports: [PrismaModule],
@@ -19,6 +21,8 @@ import { MatchesService } from './matches/matches.service';
     GroupsService,
     StageService,
     MatchesService,
+    KnockoutService,
+    ResultService,
   ],
   controllers: [
     CompetitionsController,

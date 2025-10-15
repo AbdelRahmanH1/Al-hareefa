@@ -69,7 +69,7 @@ export class CompetitionsService {
         max_teams: data.max_teams ?? null,
         eliminationType: data.eliminationType ?? EliminationType.KNOCKOUT,
         hasGroupStage: data.eliminationType === EliminationType.GROUP_STAGE,
-        approval_status: ApprovalStatus.PENDING_PAYMENT,
+        approval_status: ApprovalStatus.PENDING,
         organization_id: organizer_id,
       },
     });
