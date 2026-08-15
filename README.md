@@ -1,98 +1,91 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Al-Hareefa
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+**A backend platform connecting talented players with coaches and organizations — powering tournaments, private coaching, and automated competition management.**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Built with NestJS, Prisma, PostgreSQL, and Redis.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Overview
 
-## Project setup
+Al-Hareefa is a sports talent platform where players can showcase their skills, connect with coaches, and compete in organized tournaments. Organizations can register, get approved, and run their own tournaments through the platform, while independent coaches can offer private training sessions. The system automates the entire competition lifecycle — from bracket generation to secure, oversell-proof ticket sales.
 
-```bash
-$ npm install
-```
+## Key Features
 
-## Compile and run the project
+### Tournament & Organization Management
+- Organizations can apply to host tournaments; a manager-approval workflow controls who is authorized to create and run events on the platform.
+- Coaches have a dedicated section for offering and managing private training sessions, independent of tournament play.
 
-```bash
-# development
-$ npm run start
+### Automated Match Scheduling
+- A rules-based bracket-generation engine automatically builds tournament structures — **knockout, group stage, and semi-final/final progressions** — removing the need for manual scheduling as tournaments grow or player counts change.
 
-# watch mode
-$ npm run start:dev
+### Oversell-Safe Ticketing
+- Ticket purchases are protected against overselling through **pre-payment availability checks** combined with **atomic database transactions**, ensuring ticket counts stay accurate even under concurrent purchase attempts.
+- Reservation locks are managed in **Redis**, holding a ticket briefly while a payment is in progress so two users can't purchase the same seat simultaneously.
 
-# production mode
-$ npm run start:prod
-```
+### Payments
+- Integrated with **Paymob** to handle secure payment processing for tournament tickets and coaching bookings.
 
-## Run tests
+### Real-Time Notifications
+- **Firebase Cloud Messaging (FCM)** delivers real-time push notifications for events such as tournament approval, match scheduling updates, and payment confirmations.
 
-```bash
-# unit tests
-$ npm run test
+## Tech Stack
 
-# e2e tests
-$ npm run test:e2e
+| Layer | Technology |
+|---|---|
+| Framework | NestJS |
+| ORM | Prisma |
+| Database | PostgreSQL |
+| Caching / Locks | Redis |
+| Payments | Paymob |
+| Notifications | Firebase Cloud Messaging (FCM) |
+| Language | TypeScript |
 
-# test coverage
-$ npm run test:cov
-```
+## Architecture Highlights
 
-## Deployment
+- **Modular NestJS structure** — features (tournaments, organizations, coaching, ticketing, payments) are isolated into independent modules for maintainability and testability.
+- **Transactional integrity** — ticket purchase and tournament-slot allocation flows use database transactions to prevent race conditions under concurrent load.
+- **Cache-backed reservation system** — Redis-backed short-lived locks prevent double-booking of tickets or coaching slots during the payment window.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Getting Started
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Clone the repository
+git clone https://github.com/AbdelRahmanH1/Al-hareefa.git
+cd Al-hareefa
+
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Fill in database, Redis, Paymob, and Firebase credentials
+
+# Run database migrations
+npx prisma migrate dev
+
+# Start in development mode
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Environment Variables
 
-## Resources
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `PAYMOB_API_KEY` | Paymob payment gateway API key |
+| `FIREBASE_PROJECT_ID` | Firebase project ID for FCM |
+| `JWT_SECRET` | Secret used to sign authentication tokens |
 
-Check out a few resources that may come in handy when working with NestJS:
+*(Adjust variable names to match your actual `.env` configuration.)*
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Roadmap Ideas
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Live match score updates via WebSockets
+- Player performance analytics and stats dashboard
+- Multi-language support for organizations outside Egypt
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT — feel free to explore, fork, or build on top of this project.
